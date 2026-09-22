@@ -1,0 +1,1 @@
+ALTER TABLE `enrolments` ADD `groups` text DEFAULT '' NOT NULL;

@@ -1,0 +1,25 @@
+{
+  "id": "/student",
+  "name": "Pulse — My courses",
+  "short_name": "Pulse",
+  "description": "Your saved courses and anonymous class points distributions.",
+  "start_url": "/student",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f8fc",
+  "theme_color": "#052048",
+  "icons": [
+    {
+      "src": "/icons/pulse-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/pulse-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
