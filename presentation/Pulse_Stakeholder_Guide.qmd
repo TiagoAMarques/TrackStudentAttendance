@@ -1,0 +1,610 @@
+---
+title: "Pulse"
+subtitle: "Attendance and participation for university teaching"
+author: "Stakeholder overview, teacher guide and student guide"
+date: today
+format:
+  revealjs:
+    theme: default
+    css: pulse-slides.scss
+    slide-number: c/t
+    transition: fade
+    background-transition: fade
+    controls: true
+    progress: true
+    hash: true
+    history: true
+    center: false
+    width: 1600
+    height: 900
+    margin: 0.06
+    self-contained: true
+    embed-resources: true
+    navigation-mode: linear
+    pdf-separate-fragments: false
+lang: en
+---
+
+## A practical layer for active teaching {background-color="#052048" .title-slide}
+
+<div class="title-grid">
+
+<div class="title-copy">
+<div class="subhead">Pulse links attendance, participation and transparent records</div>
+
+One browser-based service supports teachers during class and gives students a simple, privacy-conscious way to join, check in, claim points and view an anonymous league.
+
+**This deck has three sections**
+
+Stakeholder overview · Teacher guide · Student guide
+</div>
+
+<div class="brand-orbit" aria-label="Pulse application mark">
+<div class="pulse-mark">P</div>
+<div class="orbit orbit-a"></div><div class="orbit orbit-b"></div>
+</div>
+
+</div>
+
+<div class="notes">
+Use the opening section with IT, university leadership, teaching teams and potential funders. Skip directly to the teacher or student section for operational briefings.
+</div>
+
+## Presentation map
+
+<div class="roadmap">
+
+<div class="roadmap-step">
+<span>01</span>
+<div class="subhead">Why Pulse</div>
+Teaching problem, service model, stakeholders and boundaries
+</div>
+
+<div class="roadmap-step">
+<span>02</span>
+<div class="subhead">Teacher guide</div>
+Course setup, classes, attendance, points, records and corrections
+</div>
+
+<div class="roadmap-step">
+<span>03</span>
+<div class="subhead">Student guide</div>
+Joining, checking in, claiming points and viewing the league
+</div>
+
+</div>
+
+## The teaching problem
+
+<div class="two-col wide-gap">
+
+<div class="big-statement">
+Attendance and participation often live in separate spreadsheets, paper lists and personal notes.
+</div>
+
+<div class="clean-list">
+- Classroom actions must take seconds, not minutes.
+- Students need a clear explanation of what data the service records.
+- Multiple teachers need a shared view of a course.
+- Corrections must preserve history rather than erase it.
+- Administrative and IT teams need a deployable, auditable service.
+</div>
+
+</div>
+
+## The service model
+
+<div class="flow five">
+
+<div class="flow-node">
+<b>1</b><strong>Course roster</strong><small>Teacher imports institutional student records</small>
+</div>
+
+<div class="flow-node">
+<b>2</b><strong>Course joining</strong><small>Each student activates their place once</small>
+</div>
+
+<div class="flow-node">
+<b>3</b><strong>Class attendance</strong><small>Short-lived QR records presence</small>
+</div>
+
+<div class="flow-node">
+<b>4</b><strong>Participation</strong><small>QR claims or direct teacher awards</small>
+</div>
+
+<div class="flow-node">
+<b>5</b><strong>Records</strong><small>Private tables, corrections and exports</small>
+</div>
+
+</div>
+
+## What each audience receives
+
+| Audience | Primary value | Typical interaction |
+|---|---|---|
+| Students | A consistent way to join, check in and receive participation credit | Mobile browser and QR scan |
+| Teachers | Fast classroom controls and one course record | Teacher dashboard |
+| Course teams | Shared operational visibility across teachers | Course membership and audit records |
+| University administration | Evidence of engagement processes and accountable corrections | Aggregated exports and governance controls |
+| IT and information security | A small web service with explicit data stores, secrets and deployment requirements | Hosting, identity, monitoring and backup |
+
+## Student and teacher journeys
+
+<div class="journey-pair">
+
+<div class="journey student">
+<div class="subhead">Student</div>
+<ol><li>Scan the permanent course joining QR</li><li>Enter a student number and choose an animal nickname</li><li>Scan a class attendance QR</li><li>Claim participation points when invited</li><li>Check personal totals and the anonymous league</li></ol>
+</div>
+
+<div class="journey teacher">
+<div class="subhead">Teacher</div>
+<ol><li>Create or open a course</li><li>Import the roster and timetable</li><li>Open a scheduled or ad hoc class</li><li>Show attendance or points QR codes</li><li>Award selected students directly when needed</li><li>Review, correct and export records</li></ol>
+</div>
+
+</div>
+
+## Participation points are course evidence
+
+<div class="two-col">
+
+<div class="clean-list">
+<div class="subhead">Two award routes</div>
+
+**QR claim**  
+The teacher defines points, context, audience and validity. Eligible students scan and claim once.
+
+**Direct teacher award**  
+The teacher selects one or more enrolled students. The students do not scan and do not need to have joined the app.
+</div>
+
+<div class="source-ledger">
+<div><span>QR</span><strong>Student claim</strong><small>Source identifies a QR award</small></div>
+<div><span>TD</span><strong>Teacher direct</strong><small>Source identifies the awarding teacher</small></div>
+<div><span>↺</span><strong>Correction</strong><small>Reversal remains linked to the original event</small></div>
+</div>
+
+</div>
+
+## Privacy and identity boundaries
+
+<div class="boundary-grid">
+
+<div class="boundary good">
+<div class="subhead">Current safeguards</div>
+- Course access for teachers
+- Anonymous public league labels
+- One claim per eligible student
+- Expiring attendance and award tokens
+- Auditable corrections
+- Read-only reviewer account option
+</div>
+
+<div class="boundary caution">
+<div class="subhead">Pilot limitations</div>
+- Student number entry does not prove institutional identity
+- Small cohorts can weaken practical anonymity
+- Teacher access still uses pilot access codes
+- Institutional retention and grading policy remain governance decisions
+</div>
+
+</div>
+
+<div class="notes">
+Do not describe the pilot as a finished identity solution. Production migration should connect teacher and student identity to university systems and apply the approved retention policy.
+</div>
+
+## Data held by the service
+
+<div class="data-map">
+<div><strong>Identity</strong><span>Student number, name, email, course membership</span></div>
+<div><strong>Course joining</strong><span>Activation time and chosen anonymous nickname</span></div>
+<div><strong>Attendance</strong><span>Class, time, source, verification state and correction status</span></div>
+<div><strong>Points</strong><span>Amount, reason, class context, source, teacher and reversals</span></div>
+<div><strong>Operations</strong><span>Courses, teaching team, timetable and session state</span></div>
+</div>
+
+## Deployment and integration view
+
+<div class="architecture">
+<div class="actor">Student browser</div>
+<div class="actor">Teacher browser</div>
+<div class="service"><strong>Pulse web application</strong><span>Responsive interface · server actions · QR issuance</span></div>
+<div class="store"><strong>Relational database</strong><span>Courses · enrolments · attendance · points · audit records</span></div>
+<div class="platform"><strong>University platform services</strong><span>SSO · managed hosting · logs · backups · monitoring</span></div>
+</div>
+
+## Production-readiness decisions
+
+<div class="decision-list">
+<div><b>Identity</b><span>Map institutional staff and student identities to course roles.</span></div>
+<div><b>Data protection</b><span>Approve lawful basis, notices, retention, subject rights and incident handling.</span></div>
+<div><b>Hosting</b><span>Define service owner, environments, secrets, backups, monitoring and recovery targets.</span></div>
+<div><b>Teaching policy</b><span>Decide how participation points relate to assessment and reasonable adjustments.</span></div>
+<div><b>Support</b><span>Publish routes for access problems, incorrect records and classroom contingencies.</span></div>
+</div>
+
+## Evidence and reporting
+
+<div class="two-col">
+
+<div class="clean-list">
+<div class="subhead">Teacher-facing evidence</div>
+- Chronological events
+- Course totals and rankings
+- Attendance records
+- Current enrolments
+- Point source and awarding teacher
+- Corrections without deleting originals
+</div>
+
+<div class="clean-list">
+<div class="subhead">Export options</div>
+- CSV for each course table
+- Checked-in student export
+- Course backup export
+- Data suitable for local reconciliation and approved downstream analysis
+</div>
+
+</div>
+
+# Teacher guide {background-color="#0c4fb3" .section-slide}
+
+## Teacher workflow at a glance
+
+<div class="flow six compact">
+
+<div class="flow-node">
+<b>1</b><strong>Open course</strong><small>Choose the correct course</small>
+</div>
+
+<div class="flow-node">
+<b>2</b><strong>Prepare</strong><small>Roster, timetable and joining QR</small>
+</div>
+
+<div class="flow-node">
+<b>3</b><strong>Start class</strong><small>Scheduled or ad hoc</small>
+</div>
+
+<div class="flow-node">
+<b>4</b><strong>Take attendance</strong><small>Display the class QR</small>
+</div>
+
+<div class="flow-node">
+<b>5</b><strong>Award points</strong><small>QR or direct selection</small>
+</div>
+
+<div class="flow-node">
+<b>6</b><strong>Close and review</strong><small>Records and corrections</small>
+</div>
+
+</div>
+
+## Teacher dashboard
+
+<div class="screen-layout">
+
+<div class="app-window">
+<div class="app-top"><span class="app-logo">P</span><b>Pulse</b><small>COURSE READY</small></div>
+<div class="mock-body"><nav><b>⌂ Overview</b><span>▤ Courses</span><span>♙ Students</span><span>♛ Leaderboard</span></nav><main><header><small>COURSE READY</small><div class="subhead">Numerical Ecology</div></header><div class="mock-session"><h4>Start today’s class</h4><p>Open a session to record class attendance.</p><button>Start a class session</button></div><div class="mock-feed"><b>Quick award — Make a moment count</b><p><button>Create points QR</button> <button class="light">Select students directly</button></p></div></main></div>
+</div>
+
+<div class="screen-notes">
+<b>1</b> Confirm the course name before changing anything.
+
+<b>2</b> The central class card controls the active session.
+
+<b>3</b> The right column holds onboarding, quick awards and course records.
+</div>
+
+</div>
+
+## Course setup
+
+<div class="steps">
+<div><b>1</b><div><strong>Create or choose a course</strong><span>Use Courses in the sidebar. Course owners may add other teachers when creating a course.</span></div></div>
+<div><b>2</b><div><strong>Import the roster</strong><span>Use a participants CSV with student ID and name. Email and groups support course administration.</span></div></div>
+<div><b>3</b><div><strong>Import the timetable</strong><span>Semester classes appear as scheduled rows that teachers can open when needed.</span></div></div>
+<div><b>4</b><div><strong>Show the permanent joining QR</strong><span>Students use it once to activate their course place and choose a nickname.</span></div></div>
+</div>
+
+## Roster import checks
+
+<div class="two-col">
+
+<div class="clean-list">
+<div class="subhead">Before import</div>
+- Use the required participant filename and CSV structure.
+- Confirm the target course shown in the preview.
+- Review rows marked new, update or error.
+- Correct missing IDs, names or invalid email values.
+</div>
+
+<div class="callout caution">
+<div class="subhead">Replace roster requires care</div>
+Replacement removes absent students from the active course roster while preserving historical attendance and points. Use it only when the file represents the intended complete roster.
+</div>
+
+</div>
+
+## Opening and closing classes
+
+<div class="screen-layout">
+
+<div class="app-window narrow-screen">
+<div class="app-top"><span class="app-logo">P</span><b>Pulse</b><small>SEMESTER CLASSES</small></div>
+<div class="schedule"><div><small>T03 · 16 SEP · 14:00</small><strong>Sampling distributions</strong><span>Room 2.3.14</span><button>Open class</button></div><div class="complete"><small>T02 · COMPLETED</small><strong>Probability review</strong><span>Previous session retained</span><button>Reset to scheduled</button></div></div>
+</div>
+
+<div class="screen-notes">
+**Open class** starts the selected scheduled class.
+
+**Close session** ends attendance and class-limited award QR codes.
+
+**Reset to scheduled** makes a test class available again without deleting its previous records.
+</div>
+
+</div>
+
+## Attendance QR
+
+<div class="two-col">
+
+<div class="steps compact-steps">
+<div><b>1</b><div><strong>Open the class</strong><span>Verify title and room.</span></div></div>
+<div><b>2</b><div><strong>Select Show attendance QR</strong><span>The displayed code belongs to this class.</span></div></div>
+<div><b>3</b><div><strong>Keep it visible for the check-in period</strong><span>The dashboard updates the room list automatically.</span></div></div>
+<div><b>4</b><div><strong>Close the session after class</strong><span>Students can no longer use that class token.</span></div></div>
+</div>
+
+<div class="qr-demo">
+<div class="fake-qr" aria-label="Illustrative QR pattern"></div>
+<strong>Attendance</strong><span>Class-specific and time-limited</span>
+</div>
+
+</div>
+
+## Participation QR
+
+<div class="screen-layout">
+
+<div class="app-window award-window">
+<div class="app-top"><span class="app-logo">P</span><b>Participation award</b></div>
+<div class="award-form"><div class="tabs"><b>QR code</b><span>Award directly</span></div><label>Count points toward<select><option>Current class · Sampling distributions</option></select></label><div class="point-row"><button>+1</button><button class="selected">+2</button><button>+3</button><button>+5</button></div><label>Reason<input value="Insightful answer" readonly></label><label>Who can claim this QR?<select><option>All joined students</option></select></label><label>QR validity<select><option>5 minutes</option></select></label><button class="primary">Create points QR</button></div>
+</div>
+
+<div class="screen-notes">
+Choose whether points count toward the current class or independent coursework.
+
+Limit the audience when only selected joined students may claim.
+
+Use short validity for live participation. Longer modes suit planned coursework.
+</div>
+
+</div>
+
+## Direct teacher award
+
+<div class="screen-layout">
+
+<div class="app-window award-window">
+<div class="app-top"><span class="app-logo">P</span><b>Participation award</b></div>
+<div class="award-form"><div class="tabs"><span>QR code</span><b>Award directly</b></div><label>Count points toward<select><option>Independent coursework (no class)</option></select></label><div class="point-row"><button>+1</button><button class="selected">+2</button><button>+3</button><button>+5</button></div><label>Reason<input value="Coursework submitted on Moodle" readonly></label><label>Find students<input value="Search by name or student number" readonly></label><div class="student-pick"><span>☑ Ana Student <small>fc12345</small></span><span>☐ Bruno Student <small>fc23456</small></span></div><button class="primary">Award 2 points to 1 student</button></div>
+</div>
+
+<div class="screen-notes">
+The course landing page exposes **Select students directly** separately from QR creation.
+
+Direct awards work for any enrolled student, even if the student has not joined the app.
+
+The audit record stores the direct source and awarding teacher.
+</div>
+
+</div>
+
+## Choosing the right award route
+
+| Situation | Recommended route | Reason |
+|---|---|---|
+| A live question answered during class | Short-lived QR | Students claim immediately and only once |
+| A small group completes a classroom task | Restricted QR | Only selected joined students can claim |
+| Coursework arrives by email or Moodle | Direct teacher award | No student scan needed |
+| A teacher notices a missing award later | Direct teacher award | Clear teacher attribution and reason |
+| A previous award was incorrect | Reverse in course records | Preserves the original and the correction |
+
+## Course records and corrections
+
+<div class="record-tabs-demo">
+<div class="record-tabs"><b>Events</b><span>League</span><span>Attendance</span><span>Enrolments</span></div>
+<table><thead><tr><th>Event</th><th>Student</th><th>Details</th><th>Source</th><th>Teacher</th><th>Points</th><th>Correction</th></tr></thead><tbody><tr><td>POINTS</td><td>Ana Student</td><td>Coursework on Moodle</td><td>teacher direct</td><td>Course Teacher</td><td>+2</td><td>Reverse</td></tr><tr><td>POINTS</td><td>Bruno Student</td><td>Insightful answer</td><td>QR</td><td>Course Teacher</td><td>+2</td><td>Reverse</td></tr></tbody></table>
+</div>
+
+<div class="notes">
+Reversal asks for a reason. Attendance corrections mark a record incorrect without deleting the historical entry.
+</div>
+
+## End-of-class routine
+
+<div class="end-routine">
+<div><span>01</span><strong>Check the room list</strong><small>Resolve obvious missing attendance while the class context is fresh.</small></div>
+<div><span>02</span><strong>Close the session</strong><small>This ends attendance and class-limited award codes.</small></div>
+<div><span>03</span><strong>Review recent activity</strong><small>Confirm attendance and participation events.</small></div>
+<div><span>04</span><strong>Correct when needed</strong><small>Record a reason so the audit history remains intelligible.</small></div>
+</div>
+
+## Teacher contingencies
+
+<div class="two-col">
+
+<div class="clean-list">
+<div class="subhead">If a QR fails</div>
+- Confirm that the student joined the course.
+- Check that the code has not expired or been deactivated.
+- Generate a new code if the original validity ended.
+- Use a direct award for a documented participation event.
+</div>
+
+<div class="clean-list">
+<div class="subhead">If a student cannot check in</div>
+- Confirm that the student number matches the roster.
+- Check the class and course shown on screen.
+- Add a missing attendance record from Course Data when justified.
+- Record a clear correction reason.
+</div>
+
+</div>
+
+# Student guide {background-color="#397785" .section-slide}
+
+## What students need
+
+<div class="student-needs">
+<div><span>1</span><strong>A phone or computer browser</strong><small>No app-store installation is required.</small></div>
+<div><span>2</span><strong>Their institutional student number</strong><small>Use the identifier that appears on the course roster.</small></div>
+<div><span>3</span><strong>The QR shown by the teacher</strong><small>Joining, attendance and points use different codes.</small></div>
+</div>
+
+## One-time course joining
+
+<div class="two-col">
+
+<div class="steps compact-steps">
+<div><b>1</b><div><strong>Scan the course joining QR</strong><span>The teacher can show it at any point in the semester.</span></div></div>
+<div><b>2</b><div><strong>Enter the student number</strong><span>Email addresses do not work in this field.</span></div></div>
+<div><b>3</b><div><strong>Choose an animal nickname</strong><span>The public league uses this nickname instead of the student’s name.</span></div></div>
+<div><b>4</b><div><strong>Keep the course page available</strong><span>It shows the personal points total and course league.</span></div></div>
+</div>
+
+<div class="phone">
+<div class="phone-top">Pulse · Join course</div><h4>Activate your place</h4><label>Student number<input value="fc12345" readonly></label><div class="nicknames"><span>Blue Whale</span><b>Sea Otter</b><span>Golden Eagle</span></div><button>Join course</button>
+</div>
+
+</div>
+
+## Attendance check-in
+
+<div class="student-action">
+<div class="large-number">01</div><div><strong>Scan the attendance QR during class</strong><span>The QR identifies the current class and expires after the teacher’s chosen period.</span></div>
+<div class="large-number">02</div><div><strong>Enter the roster student number</strong><span>Pulse checks that the number belongs to this course.</span></div>
+<div class="large-number">03</div><div><strong>Read the confirmation</strong><span>A successful screen confirms the recorded class.</span></div>
+</div>
+
+## Claiming QR points
+
+<div class="screen-layout">
+
+<div class="phone wide-phone">
+<div class="phone-top">Pulse · Participation</div><div class="success-icon">✓</div><h4>Claim 2 points</h4><p>Insightful answer</p><label>Student number<input value="fc12345" readonly></label><button>Claim points</button><small>Each eligible student can claim once.</small>
+</div>
+
+<div class="screen-notes">
+The reason and number of points appear before confirmation.
+
+Some QR codes work for every joined student. Others accept only students selected by the teacher.
+
+If the QR expired, ask the teacher whether they intend to generate another code.
+</div>
+
+</div>
+
+## Direct awards need no student action
+
+<div class="big-statement centered">
+When a teacher awards points directly, the student does not scan a QR.
+</div>
+
+The course total updates from the teacher’s recorded award. Typical examples include coursework sent by email, work submitted in Moodle or a missing classroom award corrected later.
+
+## Personal course page
+
+<div class="two-col">
+
+<div class="phone wide-phone">
+<div class="phone-top">Numerical Ecology</div><div class="nickname">Sea Otter</div><div class="total"><strong>18</strong><span>course points</span></div><div class="history"><b>Recent activity</b><span>+2 Coursework on Moodle</span><span>+3 Group exercise</span></div>
+</div>
+
+<div class="clean-list">
+<div class="subhead">Students can check</div>
+- Their anonymous nickname
+- Their own points total
+- Recent personal awards
+- The anonymous course league
+
+Students cannot see classmates’ identities or private individual records.
+</div>
+
+</div>
+
+## Anonymous league table
+
+<div class="league-demo">
+<div class="podium"><div><i>2</i><b>Blue Whale</b><span>24 pts</span></div><div class="first"><i>1</i><b>Golden Eagle</b><span>28 pts</span></div><div><i>3</i><b>Sea Otter</b><span>18 pts</span></div></div>
+<div class="standing"><b>4</b><span>Red Fox</span><strong>16 pts</strong></div>
+</div>
+
+The league displays opted-in animal nicknames. Teachers retain the private record that connects a student to their course history.
+
+## Student troubleshooting
+
+<div class="faq">
+<div><strong>“Student not found”</strong><span>Use the student number on the course roster, not an email address. Ask the teacher to check the import if it still fails.</span></div>
+<div><strong>“Already claimed”</strong><span>Each award QR allows one successful claim per eligible student.</span></div>
+<div><strong>“QR expired”</strong><span>The validity period ended or the teacher closed the class or deactivated the award.</span></div>
+<div><strong>Wrong attendance or points</strong><span>Contact the teaching team. Teachers can correct the record while preserving the audit history.</span></div>
+</div>
+
+## Responsible classroom use
+
+<div class="boundary-grid">
+
+<div class="boundary good">
+<div class="subhead">Students</div>
+- Use only your own student number.
+- Do not share active QR links outside the intended class.
+- Check confirmations before closing the page.
+- Report incorrect records promptly.
+</div>
+
+<div class="boundary good">
+<div class="subhead">Teachers</div>
+- Explain the purpose of attendance and points.
+- Avoid displaying personal student records publicly.
+- Use meaningful reasons for direct awards and corrections.
+- Apply the agreed course policy consistently.
+</div>
+
+</div>
+
+## Recommended rollout
+
+<div class="timeline">
+<div><b>Pilot</b><span>Confirm teaching workflow, support load and student understanding with synthetic or low-stakes use.</span></div>
+<div><b>Institutional integration</b><span>Connect SSO, course membership and approved hosting. Complete privacy and security actions.</span></div>
+<div><b>Controlled adoption</b><span>Train teaching teams, publish student guidance and monitor service indicators.</span></div>
+<div><b>Review</b><span>Evaluate educational value, accessibility, data quality and operational cost before wider use.</span></div>
+</div>
+
+## Ownership and next decisions
+
+<div class="ownership">
+<div><strong>Academic owner</strong><span>Teaching policy, participation design and evaluation</span></div>
+<div><strong>Service owner</strong><span>Roadmap, support model and release decisions</span></div>
+<div><strong>IT owner</strong><span>Identity, hosting, monitoring, backup and recovery</span></div>
+<div><strong>Data protection</strong><span>Notice, lawful basis, retention and rights handling</span></div>
+</div>
+
+## Pulse in one sentence {background-color="#052048" .closing-slide}
+
+<div class="closing-copy">
+Pulse gives teaching teams a fast way to record attendance and participation while keeping the student experience simple and the underlying course history accountable.
+
+<span>Stakeholder overview · Teacher guide · Student guide</span>
+</div>
+
+
+
+
+
+
+
+

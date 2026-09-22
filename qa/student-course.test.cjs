@@ -1,0 +1,12 @@
+const fs=require('fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const {DatabaseSync}=require('node:sqlite');const sqlite=new DatabaseSync(':memory:');
+for(const f of fs.readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())sqlite.exec(fs.readFileSync('drizzle/'+f,'utf8'));
+sqlite.exec("INSERT INTO users VALUES ('t','teacher@example.test','Teacher',1); INSERT INTO courses(id,code,name,owner_id,created_at,archived_at) VALUES ('a','TEST101','Course A','t',1,NULL),('b','OLD','Archived','t',1,1)");
+const db={prepare(sql){let args=[];return{bind(...values){args=values;return this},async all(){return {results:sqlite.prepare(sql).all(...args)}}}}};
+const moduleStub={exports:{}};
+new Function('require','module','exports',ts.transpileModule(fs.readFileSync('app/student/course/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(()=>({env:{DB:db}}),moduleStub,moduleStub.exports);
+(async()=>{const get=query=>moduleStub.exports.GET(new Request('https://example.test/student/course?'+query));
+assert.deepEqual(await (await get('code=test101')).json(),{id:'a',code:'TEST101',name:'Course A'});
+assert.equal((await get('id=b')).status,404);assert.equal((await get('code=missing')).status,404);assert.equal((await get('id=..%2Fbad')).status,400);
+sqlite.exec("INSERT INTO courses(id,code,name,owner_id,created_at) VALUES ('c','TEST101','Duplicate code','t',1)");assert.equal((await get('code=TEST101')).status,404);assert.equal((await get('id=a')).status,200);
+console.log('PASS: public course lookup, case-insensitive code, exact link, archived/missing/invalid and ambiguous courses.');})().catch(e=>{console.error(e);process.exitCode=1});
