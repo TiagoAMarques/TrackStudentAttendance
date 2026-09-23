@@ -16,6 +16,7 @@ export type DashboardData = {
   feed: Array<{ id: string; name: string; note: string; time: number; initials: string }>;
   leaders: Array<{ label: string; points: number }>;
   classLeaders: Array<{ label: string; points: number }>;
+  attendanceTrend: Array<{ id:string; classId:string; date:string; present:number }>;
 };
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -63,6 +64,7 @@ export async function getDashboard(user: ChatGPTUser): Promise<DashboardData> {
   const classLeaders = session ? await db.prepare(`SELECT lp.alias AS label,COALESCE(SUM(CASE WHEN COALESCE(pa.session_id,original_pa.session_id,pt.manual_session_id,original.manual_session_id)=? THEN pt.points ELSE 0 END),0) AS points FROM leaderboard_preferences lp JOIN enrolments e ON e.course_id=lp.course_id AND e.student_id=lp.student_id AND e.active=1 AND e.checked_in_at IS NOT NULL LEFT JOIN point_transactions pt ON pt.course_id=lp.course_id AND pt.student_id=lp.student_id LEFT JOIN point_awards pa ON pa.id=pt.award_id LEFT JOIN point_transactions original ON original.id=pt.reverses_transaction_id LEFT JOIN point_awards original_pa ON original_pa.id=original.award_id WHERE lp.course_id=? AND lp.visibility='public' AND lp.alias IS NOT NULL AND lp.alias!='' GROUP BY lp.student_id ORDER BY points DESC,lp.alias LIMIT 3`).bind(session.id,course.id).all<{label:string;points:number}>() : null;
   const present = session ? await db.prepare(`SELECT COUNT(*) AS n FROM attendance WHERE session_id=? AND voided_at IS NULL`).bind(session.id).first<{n:number}>() : null;
   const presentStudents = session ? await db.prepare(`SELECT s.student_number AS studentId,s.name,a.recorded_at AS checkedInAt,(SELECT COALESCE(SUM(pt.points),0) FROM point_transactions pt LEFT JOIN point_awards pa ON pa.id=pt.award_id LEFT JOIN point_transactions original ON original.id=pt.reverses_transaction_id LEFT JOIN point_awards original_pa ON original_pa.id=original.award_id WHERE pt.student_id=s.id AND COALESCE(pa.session_id,original_pa.session_id,pt.manual_session_id,original.manual_session_id)=?) AS classPoints,(SELECT COALESCE(SUM(pt.points),0) FROM point_transactions pt WHERE pt.student_id=s.id AND pt.course_id=?) AS totalPoints FROM attendance a JOIN students s ON s.id=a.student_id WHERE a.session_id=? AND a.voided_at IS NULL ORDER BY a.recorded_at DESC,s.name`).bind(session.id, course.id, session.id).all<{studentId:string;name:string;checkedInAt:number;classPoints:number;totalPoints:number}>() : null;
+  const attendanceTrend=await db.prepare(`SELECT sc.id,sc.class_id AS classId,sc.class_date AS date,COUNT(a.id) AS present FROM scheduled_classes sc LEFT JOIN attendance a ON a.session_id=sc.session_id AND a.voided_at IS NULL WHERE sc.course_id=? AND sc.session_id IS NOT NULL GROUP BY sc.id ORDER BY sc.class_date,sc.class_time,sc.class_id`).bind(course.id).all<{id:string;classId:string;date:string;present:number}>();
   return {
     readOnly:!!user.readOnly, teacherAdmin:!!user.teacherAdmin,
     pilotOrigin: process.env.PILOT_MODE === 'true' ? (process.env.PILOT_PUBLIC_ORIGIN ?? null) : null,
@@ -76,6 +78,7 @@ export async function getDashboard(user: ChatGPTUser): Promise<DashboardData> {
     feed: feed.results.map(row => ({ ...row, initials: initials(row.name) })),
     leaders: leaders.results,
     classLeaders: classLeaders?.results??[],
+    attendanceTrend: attendanceTrend.results,
   };
 }
 
