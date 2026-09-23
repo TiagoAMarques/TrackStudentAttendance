@@ -12,7 +12,7 @@ import { digestToken, ensureTeacher, id, initials, now } from './data';
 import { rosterCourseCode, validateRoster, type RosterStudent } from './roster-import';
 import { ANIMAL_NICKNAMES } from './animal-nicknames';
 import { getPilotTeacherDirectory } from './pilot-auth';
-import { loadCourseRecords } from './course-records';
+import { loadCourseRecords,loadSessionAttendance } from './course-records';
 import { validateTimetable, type TimetableRow, type ScheduledClass } from './timetable';
 import { validateAttendanceImport, type AttendanceImportRow } from './attendance-import';
 
@@ -28,6 +28,13 @@ export async function getScheduledClasses(courseId:string):Promise<ScheduledClas
  const {db}=await timetableContext(courseId,true);
  const result=await db.prepare(`SELECT sc.id,c.code AS courseId,sc.class_id AS classId,sc.class_date AS date,sc.week,sc.class_time AS time,sc.room,sc.teacher,sc.comments,sc.session_id AS sessionId,cs.closed_at AS closedAt FROM scheduled_classes sc JOIN courses c ON c.id=sc.course_id LEFT JOIN class_sessions cs ON cs.id=sc.session_id WHERE sc.course_id=? ORDER BY sc.class_date,sc.class_time,sc.class_id`).bind(courseId).all<ScheduledClass>();
  return result.results;
+}
+
+export async function getScheduledClassAttendance(courseId:string,scheduledId:string){
+ const {db}=await timetableContext(courseId,true);
+ const scheduled=await db.prepare(`SELECT class_id AS classId,session_id AS sessionId FROM scheduled_classes WHERE id=? AND course_id=?`).bind(scheduledId,courseId).first<{classId:string;sessionId:string|null}>();
+ if(!scheduled)throw Error('This semester class is unavailable.');
+ return {classId:scheduled.classId,sessionId:scheduled.sessionId,rows:scheduled.sessionId?await loadSessionAttendance(courseId,scheduled.sessionId):[]};
 }
 
 export async function importTimetable(courseId:string,input:TimetableRow[]){

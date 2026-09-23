@@ -5,12 +5,13 @@
 .semester-modal .semester-table-wrap{max-height:55vh;margin-top:16px}
 .semester-table{font-size:14px}.semester-table th{font-size:12px;white-space:nowrap;z-index:2}
 .semester-table td{white-space:nowrap}.semester-table td:last-child{white-space:normal;min-width:180px;max-width:320px}
-.semester-table .semester-action{position:sticky;left:0;background:white;z-index:1;min-width:230px}
+.semester-table .semester-action{position:sticky;left:0;background:white;z-index:1;min-width:330px}
 .semester-table th.semester-action{z-index:3;background:var(--blue-tint)}
-.semester-action button{padding:9px 12px;border:0;border-radius:7px;background:var(--primary);color:white;white-space:nowrap;font-size:14px}
+.semester-action button,.semester-action a{padding:9px 12px;border:0;border-radius:7px;background:var(--primary);color:white;white-space:nowrap;font-size:14px;text-decoration:none}
 .semester-action button.reset-class{border:1px solid var(--blue-background);background:var(--blue-tint);color:var(--primary)}
 .semester-action button:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
 .semester-modal .semester-help{max-width:760px;color:var(--muted)}
-.semester-action-buttons{display:flex;gap:7px}.semester-action button.upload-attendance{border:1px solid var(--blue-background);background:var(--blue-tint);color:var(--primary)}
+.semester-action-buttons{display:flex;gap:7px}.semester-action button.upload-attendance,.semester-action button.view-attendance{border:1px solid var(--blue-background);background:var(--blue-tint);color:var(--primary)}
 .attendance-upload-panel{margin:18px 0;padding:18px;border:1px solid var(--blue-background);border-radius:12px;background:var(--paper)}.attendance-upload-panel h3{margin:5px 0 8px}.attendance-upload-panel p{max-width:760px;font-size:13px;line-height:1.5}.attendance-file{display:inline-flex;margin-top:8px;padding:10px 14px;border-radius:8px;background:var(--primary);color:white;font-size:13px;font-weight:700;cursor:pointer}.attendance-file input{position:absolute;width:1px;height:1px;opacity:0}.attendance-preview{max-height:180px}.attendance-upload-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}.attendance-upload-actions button{padding:10px 14px;border:1px solid var(--blue-background);border-radius:8px;background:white;color:var(--primary);font-weight:700}.attendance-upload-actions .dark{border-color:var(--primary);background:var(--primary);color:white}.semester-message{padding:11px 13px;border-radius:8px;background:#edf8f3;color:#246a4a;font-weight:700}
-@media(max-width:650px){.modal.semester-modal{padding:18px}.semester-modal .semester-table-wrap{max-height:50vh}}
+.class-attendance-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.class-attendance-actions{display:flex;gap:8px}.class-attendance-actions a,.class-attendance-actions button{padding:9px 12px;border:1px solid var(--blue-background);border-radius:8px;background:white;color:var(--primary);font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}.class-attendance-actions a{border-color:var(--primary);background:var(--primary);color:white}.class-attendance-panel .attendance-preview{max-height:260px}
+@media(max-width:650px){.modal.semester-modal{padding:18px}.semester-modal .semester-table-wrap{max-height:50vh}.class-attendance-heading{display:block}.class-attendance-actions{margin-top:12px}.semester-action-buttons{flex-wrap:wrap}.semester-table .semester-action{min-width:220px}}

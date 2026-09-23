@@ -8,6 +8,11 @@ export type CheckedInRecord={studentId:string;name:string;email:string;nickname:
 export type EnrolmentRecord={nickname:string;studentId:string;name:string;email:string;groups:string;checkedInAt:number|null};
 export type CourseRecords={events:EventRecord[];league:LeagueRecord[];attendance:AttendanceRecord[];enrolments:EnrolmentRecord[];checkedIn:CheckedInRecord[];sessions:SessionChoice[]};
 
+export async function loadSessionAttendance(courseId:string,sessionId:string):Promise<AttendanceRecord[]>{
+  const result=await env.DB.prepare(`SELECT a.id,a.recorded_at AS time,s.student_number AS studentId,s.name,COALESCE(lp.alias,'') AS nickname,cs.title AS session,COALESCE(cs.room,'') AS room,a.source,a.identity_verification AS verification,a.voided_at AS voidedAt,COALESCE(u.display_name,'') AS voidedBy,COALESCE(a.void_reason,'') AS voidReason FROM attendance a JOIN students s ON s.id=a.student_id JOIN class_sessions cs ON cs.id=a.session_id LEFT JOIN leaderboard_preferences lp ON lp.course_id=cs.course_id AND lp.student_id=a.student_id LEFT JOIN users u ON u.id=a.voided_by WHERE cs.course_id=? AND cs.id=? AND a.voided_at IS NULL ORDER BY s.name COLLATE NOCASE,s.student_number`).bind(courseId,sessionId).all<AttendanceRecord>();
+  return result.results;
+}
+
 export async function loadCourseRecords(courseId:string):Promise<CourseRecords>{
   const db=env.DB;
   const [enrolments,events,league,attendance,checkedIn,sessions]=await Promise.all([

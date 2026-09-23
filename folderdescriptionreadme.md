@@ -96,6 +96,7 @@ The operational input files are now organized below `local-data/` rather than st
 |---|---|
 | `batch-1-core/` | Core application, database code and migrations, public assets, configuration, and package metadata. |
 | `batch-2-tests-and-docs/` | QA files, the repository README, project guides, stakeholder presentation, and supporting documentation. |
+| `update-2026-09-23-class-attendance/` | Five replacement source files for adding the per-class attendance table and class-specific CSV export to an existing GitHub repository. See `outputs/github-browser-upload/UPDATE-2026-09-23.md` for the upload manifest and deployment record. |
 
 These batches intentionally omit `.env.local`, `local-data/`, dependency folders, build output, deployment workspaces, historical archives, privacy workbooks, and redundant packaged ZIP files. Upload the **contents** of each batch, not the outer batch directory. Because they are snapshots, they must be refreshed after later source changes.
 
