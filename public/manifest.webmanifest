@@ -1,8 +1,8 @@
 {
   "id": "/student",
-  "name": "Pulse — My courses",
+  "name": "Pulse — Courses",
   "short_name": "Pulse",
-  "description": "Your saved courses and anonymous class points distributions.",
+  "description": "Student course leagues and authenticated teacher classroom tools.",
   "start_url": "/student",
   "scope": "/",
   "display": "standalone",
