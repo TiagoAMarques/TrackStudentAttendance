@@ -57,7 +57,7 @@ export async function startScheduledClass(courseId:string,scheduledId:string,min
   db.prepare(`INSERT INTO audit_log (id,course_id,actor_id,action,entity_type,entity_id,details,created_at) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM class_sessions WHERE id=?)`).bind(id(),courseId,user.userId,'session.opened','class_session',sessionId,JSON.stringify({scheduledId,classId:scheduled.classId}),time,sessionId)
  ]);
  if(!result[0].meta.changes)throw Error('Close the active session before starting another class.');
- revalidatePath('/');return {urlPath:`/redeem/attendance/${token}`,expiresAt};
+ revalidatePath('/');return {urlPath:`/redeem/attendance/${token}`,expiresAt,sessionId};
 }
 
 export async function resetScheduledClass(courseId:string,scheduledId:string){
@@ -259,7 +259,7 @@ export async function openSession(input:{title:string;room:string;attendanceMinu
   const write=db.prepare(`INSERT INTO class_sessions(id,course_id,title,room,attendance_token_digest,attendance_expires_at,attendance_duration_minutes,opened_by,opened_at) SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM courses WHERE id=? AND archived_at IS NULL) AND NOT EXISTS (SELECT 1 FROM class_sessions WHERE course_id=? AND closed_at IS NULL)`).bind(sessionId,course.id,input.title.trim()||'Class session',input.room.trim()||null,digest,expiresAt,input.attendanceMinutes,user.userId,time,course.id,course.id);
   const changes=await auditedWrite(db,write,course.id,user.userId,'session.opened','class_session',sessionId,{title:input.title.trim(),room:input.room.trim()},time);
   if(!changes)throw Error('Close the active session before starting another class.');
-  revalidatePath('/');return {urlPath:'/redeem/attendance/'+token,expiresAt};
+  revalidatePath('/');return {urlPath:'/redeem/attendance/'+token,expiresAt,sessionId};
 }
 
 export async function closeSession(sessionId:string){
