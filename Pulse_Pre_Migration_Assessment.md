@@ -27,7 +27,7 @@ The following were reproduced against synthetic in-memory SQLite data through th
 
 | ID | Priority | Observed behaviour and consequence | Required result |
 | --- | --- | --- | --- |
-| A01 | P1 | A valid attendance QR plus a student number is enough to redeem attendance and return the matched student's full name. Knowledge of a number is being used as identity. | Authenticate the student and derive their identity server-side; another number must never allow impersonation or reveal that person's details. If anonymous check-in remains a test option, isolate it from production. |
+| A01 | P1 | A valid attendance QR plus an ID number is enough to redeem attendance and return the matched student's full name. Knowledge of a number is being used as identity. | Authenticate the student and derive their identity server-side; another number must never allow impersonation or reveal that person's details. If anonymous check-in remains a test option, isolate it from production. |
 | A02 | P1 | Rescanning an attendance QR restores attendance that a teacher voided and clears its correction fields. | A student rescan must preserve the teacher correction. Restoration must be an explicit authorised action with an audit trail. |
 | A03 | P1 | A still-open attendance token works after the course is archived. | Redemption must atomically enforce course and session eligibility; archiving must prevent subsequent writes. |
 | A04 | P1 | Two simultaneous manual session starts create two active sessions for the same course. | Enforce the one-active-session rule at the database/write boundary; the losing request receives a useful response. |

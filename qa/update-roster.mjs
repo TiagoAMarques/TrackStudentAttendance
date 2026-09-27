@@ -27,4 +27,4 @@ s=s.slice(0,a)+`export async function importRoster(courseId:string,filename:stri
   revalidatePath('/');return {count:clean.length};
 }
 `+s.slice(b);fs.writeFileSync(p,s);
-fs.appendFileSync('.gitignore','\n# Private operational input data\n/local-data/\n');
+fs.appendFileSync('.gitignore','\n# Private student exports\n/courseid_*_participants.csv\n');

@@ -15,11 +15,11 @@ CREATE UNIQUE INDEX `idx_identity_provider_student` ON `student_identity_links` 
 -- guards prevent new collisions; the preflight report lists existing conflicts.
 CREATE TRIGGER students_number_insert BEFORE INSERT ON students
 WHEN EXISTS (SELECT 1 FROM students WHERE lower(trim(student_number))=lower(trim(NEW.student_number)))
-BEGIN SELECT RAISE(ABORT,'Student number conflicts with an existing identity'); END;
+BEGIN SELECT RAISE(ABORT,'ID number conflicts with an existing identity'); END;
 --> statement-breakpoint
 CREATE TRIGGER students_number_update BEFORE UPDATE OF student_number ON students
 WHEN EXISTS (SELECT 1 FROM students WHERE id<>NEW.id AND lower(trim(student_number))=lower(trim(NEW.student_number)))
-BEGIN SELECT RAISE(ABORT,'Student number conflicts with an existing identity'); END;
+BEGIN SELECT RAISE(ABORT,'ID number conflicts with an existing identity'); END;
 --> statement-breakpoint
 CREATE TRIGGER sessions_single_open_insert BEFORE INSERT ON class_sessions
 WHEN NEW.closed_at IS NULL AND (EXISTS (SELECT 1 FROM class_sessions WHERE course_id=NEW.course_id AND closed_at IS NULL) OR NOT EXISTS (SELECT 1 FROM courses WHERE id=NEW.course_id AND archived_at IS NULL))

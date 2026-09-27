@@ -28,7 +28,7 @@ export async function diagnoseRedemptionFailure(db:D1Database,kind:RedemptionKin
     if(qr.closedAt!==null)return redemptionFailure(kind,'QR-DEACTIVATED','Your teacher has deactivated this points QR. Ask your teacher whether a new award is available.');
     if(qr.expiryMode!=='course'&&qr.sessionId&&qr.sessionClosedAt!==null)return redemptionFailure(kind,'CLASS-CLOSED','The class linked to this points QR has ended. Ask your teacher for a new points QR.');
     if(qr.expiryMode==='timed'&&qr.expiresAt!==null&&qr.expiresAt<time)return redemptionFailure(kind,'QR-EXPIRED','This points QR has expired. Ask your teacher for a new points QR.');
-    if(qr.restricted&&!await db.prepare('SELECT 1 AS allowed FROM point_award_recipients WHERE award_id=? AND student_id=?').bind(qr.id,studentId).first())return redemptionFailure(kind,'NOT-SELECTED','This points QR is restricted to selected students, and your student number is not selected. Ask your teacher to check the recipient list.');
+    if(qr.restricted&&!await db.prepare('SELECT 1 AS allowed FROM point_award_recipients WHERE award_id=? AND student_id=?').bind(qr.id,studentId).first())return redemptionFailure(kind,'NOT-SELECTED','This points QR is restricted to selected students, and your ID number is not selected. Ask your teacher to check the recipient list.');
   }
   return redemptionFailure(kind,'RETRY','The request could not be completed. Refresh the page and try again. If it persists, send your teacher this message.');
 }

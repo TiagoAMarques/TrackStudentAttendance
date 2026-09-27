@@ -17,7 +17,7 @@ assert.throws(()=>rosterCourseCode('Students.csv'));
 assert.throws(()=>parseRoster([['First name']],filename,'EN2026'));
 const sample=[grid[0],['José','Ávila','000123','test@example.org','TP1, TP2']];
 const parsed=parseRoster(sample,filename,'EN2026');
-assert.equal(parsed[0].studentId,'000123');assert.equal(parsed[0].name,'José Ávila');assert.equal(parsed[0].groups,'TP1, TP2');
+assert.equal(parsed[0].idNumber,'000123');assert.equal(parsed[0].name,'José Ávila');assert.equal(parsed[0].groups,'TP1, TP2');
 assert.equal(parseRoster([...sample,sample[1]],filename,'EN2026')[1].status,'error');
 assert.throws(()=>validateRoster([parsed[0],parsed[0]]),/Duplicate/);
 assert.equal(parseRoster(sample,filename,'EN2026',['000123'])[0].status,'update');
@@ -27,7 +27,7 @@ db.exec("INSERT INTO users VALUES ('teacher','teacher@example.org','Teacher',0);
 const source=fs.readFileSync('app/actions.ts','utf8');
 const insertStudent=source.match(/db\.prepare\(`(INSERT INTO students \(id,student_number,name,email\)[\s\S]*?)`\)/)[1];
 const insertEnrolment=source.match(/db\.prepare\(`(INSERT INTO enrolments \(course_id,student_id,active,groups\)[\s\S]*?)`\)/)[1];
-function save(){db.exec('BEGIN');try{for(const [i,row] of rows.entries()){db.prepare(insertStudent).run('s'+i,row.studentId,row.name,row.email);db.prepare(insertEnrolment).run('course',row.groups,row.studentId)}db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}}
+function save(){db.exec('BEGIN');try{for(const [i,row] of rows.entries()){db.prepare(insertStudent).run('s'+i,row.idNumber,row.name,row.email);db.prepare(insertEnrolment).run('course',row.groups,row.idNumber)}db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}}
 save();save();
 assert.equal(db.prepare('SELECT COUNT(*) n FROM enrolments').get().n,rows.length);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM students').get().n,rows.length);
@@ -35,7 +35,7 @@ assert.equal(db.prepare('SELECT COUNT(*) n FROM enrolments WHERE checked_in_at I
 db.exec("INSERT INTO courses (id,code,name,owner_id,created_at) VALUES ('other','OTHER','Other course','teacher',0); INSERT INTO students (id,student_number,name) VALUES ('old','old-id','Old student'); INSERT INTO enrolments (course_id,student_id,active,checked_in_at) VALUES ('course','old',1,1),('other','old',1,1)");
 const reset=source.match(/db\.prepare\('(UPDATE enrolments SET active=0,checked_in_at=NULL WHERE course_id=\?)'\)/)[1];
 db.exec('BEGIN');db.prepare(reset).run('course');
-for(const row of rows)db.prepare(insertEnrolment).run('course',row.groups,row.studentId);
+for(const row of rows)db.prepare(insertEnrolment).run('course',row.groups,row.idNumber);
 db.exec('COMMIT');
 assert.equal(db.prepare("SELECT COUNT(*) n FROM enrolments WHERE course_id='course' AND active=1").get().n,150);
 assert.equal(db.prepare("SELECT active FROM enrolments WHERE course_id='course' AND student_id='old'").get().active,0);

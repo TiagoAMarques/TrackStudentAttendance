@@ -1,6 +1,6 @@
 # Pulse Attendance
 
-Pulse is a course attendance and participation-points application for university teaching. Teachers can manage courses and semester classes, import rosters and offline attendance, open time-limited QR check-ins, award points, and review or export records. Students use the web/PWA interface to enrol, check in, and redeem points.
+Pulse is a course attendance and participation-points application for university teaching. Teachers can manage courses and semester classes, import rosters and offline attendance, open time-limited QR check-ins, award points, and review or export records. Students use the web/PWA interface to enroll, check in, and redeem points.
 
 ## Local development
 

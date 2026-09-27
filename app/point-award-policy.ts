@@ -31,7 +31,7 @@ export type AwardExpiryMode = 'timed'|'session'|'course';
 
 export function validateAwardInput(input: {
   sessionId:string|null;points:number;reason:string;expiresSeconds:number;
-  recipientStudentNumbers?:string[];
+  recipientIdNumbers?:string[];
   expiryMode?:AwardExpiryMode;
 }) {
   if(input.sessionId!==null&&(typeof input.sessionId!=='string'||!input.sessionId))throw Error('Choose a class or independent coursework.');
@@ -41,12 +41,12 @@ export function validateAwardInput(input: {
   if(expiryMode==='session'&&!input.sessionId)throw Error('Choose a current class for an end-of-class expiry.');
   if(expiryMode==='timed'&&(!Number.isInteger(input.expiresSeconds)||input.expiresSeconds<60||input.expiresSeconds>1800))throw Error('Choose an expiry from 1 to 30 minutes.');
   if(typeof input.reason!=='string')throw Error('Enter a reason for this award.');
-  const recipients=input.recipientStudentNumbers;
+  const recipients=input.recipientIdNumbers;
   if(recipients!==undefined&&(!Array.isArray(recipients)||!recipients.length||recipients.length>2000||recipients.some(n=>typeof n!=='string'||!n.trim())))throw Error('Select at least one eligible student.');
   return {
     ...input,
     expiryMode,
     reason:input.reason.trim().slice(0,160)||'Class participation',
-    recipientStudentNumbers:recipients===undefined?undefined:[...new Set(recipients.map(n=>n.trim().toLowerCase()))],
+    recipientIdNumbers:recipients===undefined?undefined:[...new Set(recipients.map(n=>n.trim().toLowerCase()))],
   };
 }

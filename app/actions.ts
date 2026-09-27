@@ -2,7 +2,7 @@
 
 import { env } from 'cloudflare:workers';
 import { studentAttemptAllowed,validRedemption } from './request-security';
-import { findPilotStudent } from './student-number';
+import { findPilotStudent } from './id-number';
 import { redemptionFailure, diagnoseRedemptionFailure } from './redemption-errors';
 import { eligiblePointAward, claimPointAward, validateAwardInput, type EligiblePointAward, type AwardExpiryMode } from './point-award-policy';
 import { revalidatePath } from 'next/cache';
@@ -77,12 +77,12 @@ export async function importClassAttendance(courseId:string,scheduledId:string,i
  if(previous)return JSON.parse(previous.details) as {imported:number;skipped:number;classId:string;sessionCreated:boolean};
  const scheduled=await db.prepare(`SELECT sc.id,sc.class_id AS classId,sc.class_date AS classDate,sc.class_time AS classTime,sc.room,sc.session_id AS sessionId,cs.opened_at AS openedAt FROM scheduled_classes sc LEFT JOIN class_sessions cs ON cs.id=sc.session_id WHERE sc.id=? AND sc.course_id=?`).bind(scheduledId,courseId).first<{id:string;classId:string;classDate:string;classTime:string;room:string|null;sessionId:string|null;openedAt:number|null}>();
  if(!scheduled)throw Error('This semester class is unavailable.');
- const rows=validateAttendanceImport(input,scheduled.classId),numbers=rows.map(row=>row.studentNumber),placeholders=numbers.map(()=>'?').join(',');
- const students=await db.prepare(`SELECT s.id,s.student_number AS studentNumber FROM students s JOIN enrolments e ON e.student_id=s.id WHERE e.course_id=? AND e.active=1 AND lower(trim(s.student_number)) IN (${placeholders})`).bind(courseId,...numbers).all<{id:string;studentNumber:string}>();
- const found=new Map(students.results.map(student=>[student.studentNumber.trim().toLowerCase(),student]));
+ const rows=validateAttendanceImport(input,scheduled.classId),numbers=rows.map(row=>row.idNumber),placeholders=numbers.map(()=>'?').join(',');
+ const students=await db.prepare(`SELECT s.id,s.student_number AS idNumber FROM students s JOIN enrolments e ON e.student_id=s.id WHERE e.course_id=? AND e.active=1 AND lower(trim(s.student_number)) IN (${placeholders})`).bind(courseId,...numbers).all<{id:string;idNumber:string}>();
+ const found=new Map(students.results.map(student=>[student.idNumber.trim().toLowerCase(),student]));
  const missing=numbers.filter(number=>!found.has(number));
  if(missing.length)throw Error(`Not enrolled in ${course.code}: ${missing.slice(0,8).join(', ')}${missing.length>8?` and ${missing.length-8} more`:''}. Update the roster or correct the CSV.`);
- const time=now(),sessionCreated=!scheduled.sessionId,sessionId=scheduled.sessionId??id(),sessionTime=scheduled.openedAt??lisbonEpoch(scheduled.classDate,scheduled.classTime),existing=await db.prepare(`SELECT s.student_number AS studentNumber,a.voided_at AS voidedAt FROM attendance a JOIN students s ON s.id=a.student_id WHERE a.session_id=? AND lower(trim(s.student_number)) IN (${placeholders})`).bind(sessionId,...numbers).all<{studentNumber:string;voidedAt:number|null}>(),already=new Map(existing.results.map(row=>[row.studentNumber.trim().toLowerCase(),row.voidedAt]));
+ const time=now(),sessionCreated=!scheduled.sessionId,sessionId=scheduled.sessionId??id(),sessionTime=scheduled.openedAt??lisbonEpoch(scheduled.classDate,scheduled.classTime),existing=await db.prepare(`SELECT s.student_number AS idNumber,a.voided_at AS voidedAt FROM attendance a JOIN students s ON s.id=a.student_id WHERE a.session_id=? AND lower(trim(s.student_number)) IN (${placeholders})`).bind(sessionId,...numbers).all<{idNumber:string;voidedAt:number|null}>(),already=new Map(existing.results.map(row=>[row.idNumber.trim().toLowerCase(),row.voidedAt]));
  const imported=numbers.filter(number=>!already.has(number)||already.get(number)!==null).length,skipped=numbers.length-imported,details={imported,skipped,classId:scheduled.classId,sessionCreated};
  const statements:ReturnType<typeof db.prepare>[]=[];
  if(sessionCreated){
@@ -129,43 +129,43 @@ export async function getLiveClassroom(sessionId:string){
   if(!(await canView(course.id,user.userId)))throw new Error('You cannot view this course.');
   const session=await db.prepare(`SELECT id FROM class_sessions WHERE id=? AND course_id=? AND closed_at IS NULL`).bind(sessionId,course.id).first();
   if(!session)return [];
-  const rows=await db.prepare(`SELECT s.student_number AS studentId,s.name,a.recorded_at AS checkedInAt,(SELECT COALESCE(SUM(pt.points),0) FROM point_transactions pt LEFT JOIN point_awards pa ON pa.id=pt.award_id LEFT JOIN point_transactions original ON original.id=pt.reverses_transaction_id LEFT JOIN point_awards original_pa ON original_pa.id=original.award_id WHERE pt.student_id=s.id AND COALESCE(pa.session_id,original_pa.session_id,pt.manual_session_id,original.manual_session_id)=?) AS classPoints,(SELECT COALESCE(SUM(pt.points),0) FROM point_transactions pt WHERE pt.student_id=s.id AND pt.course_id=?) AS totalPoints FROM attendance a JOIN students s ON s.id=a.student_id WHERE a.session_id=? AND a.voided_at IS NULL ORDER BY a.recorded_at DESC,s.name`).bind(sessionId,course.id,sessionId).all<{studentId:string;name:string;checkedInAt:number;classPoints:number;totalPoints:number}>();
+  const rows=await db.prepare(`SELECT s.student_number AS idNumber,s.name,a.recorded_at AS checkedInAt,(SELECT COALESCE(SUM(pt.points),0) FROM point_transactions pt LEFT JOIN point_awards pa ON pa.id=pt.award_id LEFT JOIN point_transactions original ON original.id=pt.reverses_transaction_id LEFT JOIN point_awards original_pa ON original_pa.id=original.award_id WHERE pt.student_id=s.id AND COALESCE(pa.session_id,original_pa.session_id,pt.manual_session_id,original.manual_session_id)=?) AS classPoints,(SELECT COALESCE(SUM(pt.points),0) FROM point_transactions pt WHERE pt.student_id=s.id AND pt.course_id=?) AS totalPoints FROM attendance a JOIN students s ON s.id=a.student_id WHERE a.session_id=? AND a.voided_at IS NULL ORDER BY a.recorded_at DESC,s.name`).bind(sessionId,course.id,sessionId).all<{idNumber:string;name:string;checkedInAt:number;classPoints:number;totalPoints:number}>();
   return rows.results.map(row=>({...row,initials:initials(row.name)}));
 }
 
 export async function getCourseRecords(){const {user,course}=await context();if(!(await canView(course.id,user.userId)))throw new Error('You cannot view this course.');return loadCourseRecords(course.id)}
 
-export async function awardPointsDirectly(input:{studentNumbers:string[];points:number;reason:string;sessionId:string|null;requestId:string}){
+export async function awardPointsDirectly(input:{idNumbers:string[];points:number;reason:string;sessionId:string|null;requestId:string}){
  const {user,course,db}=await context();if(!await canEdit(course.id,user.userId))throw Error('You cannot award points in this course.');
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId??''))throw Error('Refresh the form and try again.');
  if(!Number.isInteger(input.points)||input.points<1||input.points>100)throw Error('Enter a whole number of points from 1 to 100.');
  if(typeof input.reason!=='string'||!input.reason.trim())throw Error('Enter a reason for this award.');
- if(!Array.isArray(input.studentNumbers)||!input.studentNumbers.length||input.studentNumbers.length>500)throw Error('Select between 1 and 500 students.');
- const studentNumbers=[...new Set(input.studentNumbers.map(value=>typeof value==='string'?value.trim().toLowerCase():'').filter(Boolean))];
- if(!studentNumbers.length)throw Error('Select at least one student.');
+ if(!Array.isArray(input.idNumbers)||!input.idNumbers.length||input.idNumbers.length>500)throw Error('Select between 1 and 500 students.');
+ const idNumbers=[...new Set(input.idNumbers.map(value=>typeof value==='string'?value.trim().toLowerCase():'').filter(Boolean))];
+ if(!idNumbers.length)throw Error('Select at least one student.');
  const previous=await db.prepare(`SELECT details FROM audit_log WHERE id=? AND course_id=? AND actor_id=? AND action='points.awarded_directly'`).bind(input.requestId,course.id,user.userId).first<{details:string}>();
- if(previous){const details=JSON.parse(previous.details) as {count?:number};return {created:Number.isInteger(details.count)?details.count!:studentNumbers.length};}
+ if(previous){const details=JSON.parse(previous.details) as {count?:number};return {created:Number.isInteger(details.count)?details.count!:idNumbers.length};}
  const sessionId=input.sessionId===null?null:input.sessionId;
  if(sessionId!==null&&!await db.prepare('SELECT id FROM class_sessions WHERE id=? AND course_id=?').bind(sessionId,course.id).first())throw Error('Choose a class from this course or independent coursework.');
- const placeholders=studentNumbers.map(()=>'?').join(','),students=await db.prepare(`SELECT s.id,s.student_number AS studentNumber FROM students s JOIN enrolments e ON e.student_id=s.id WHERE e.course_id=? AND e.active=1 AND lower(trim(s.student_number)) IN (${placeholders})`).bind(course.id,...studentNumbers).all<{id:string;studentNumber:string}>();
- if(students.results.length!==studentNumbers.length)throw Error('One or more selected students are no longer enrolled. Refresh and try again.');
- const reason=input.reason.trim().slice(0,160),time=now(),details={source:'teacher_direct',teacherId:user.userId,studentNumbers,count:students.results.length,points:input.points,reason,sessionId};
+ const placeholders=idNumbers.map(()=>'?').join(','),students=await db.prepare(`SELECT s.id,s.student_number AS idNumber FROM students s JOIN enrolments e ON e.student_id=s.id WHERE e.course_id=? AND e.active=1 AND lower(trim(s.student_number)) IN (${placeholders})`).bind(course.id,...idNumbers).all<{id:string;idNumber:string}>();
+ if(students.results.length!==idNumbers.length)throw Error('One or more selected students are no longer enrolled. Refresh and try again.');
+ const reason=input.reason.trim().slice(0,160),time=now(),details={source:'teacher_direct',teacherId:user.userId,idNumbers,count:students.results.length,points:input.points,reason,sessionId};
  const statements=students.results.map(student=>db.prepare(`INSERT INTO point_transactions(id,course_id,student_id,points,reason,recorded_by,source,identity_verification,manual_session_id,created_at) VALUES (?,?,?,?,?,?,'teacher_direct','teacher_manual',?,?)`).bind(id(),course.id,student.id,input.points,reason,user.userId,sessionId,time));
  statements.push(db.prepare(`INSERT INTO audit_log(id,course_id,actor_id,action,entity_type,entity_id,details,created_at) VALUES (?,?,?,?,?,?,?,?)`).bind(input.requestId,course.id,user.userId,'points.awarded_directly','point_transaction_batch',input.requestId,JSON.stringify(details),time));
  try{await db.batch(statements)}catch(error){const saved=await db.prepare(`SELECT details FROM audit_log WHERE id=? AND course_id=? AND actor_id=? AND action='points.awarded_directly'`).bind(input.requestId,course.id,user.userId).first<{details:string}>();if(!saved)throw error;}
  revalidatePath('/');return {created:students.results.length};
 }
 
-export async function addManualRecord(input:{kind:'attendance'|'points';sessionId:string;studentNumber:string;points?:number;reason:string;requestId:string}){
+export async function addManualRecord(input:{kind:'attendance'|'points';sessionId:string;idNumber:string;points?:number;reason:string;requestId:string}){
  const {user,course,db}=await context();if(!await canEdit(course.id,user.userId))throw Error('You cannot add records to this course.');
- if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId??'')||!['attendance','points'].includes(input.kind)||typeof input.reason!=='string'||typeof input.studentNumber!=='string')throw Error('Refresh the form and enter valid record details.');
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId??'')||!['attendance','points'].includes(input.kind)||typeof input.reason!=='string'||typeof input.idNumber!=='string')throw Error('Refresh the form and enter valid record details.');
  if(input.kind==='points'&&(!Number.isInteger(input.points)||input.points!<1||input.points!>100))throw Error('Enter a whole number of points between 1 and 100.');
- const reason=input.reason.trim().slice(0,200)||'Teacher-added record',details=JSON.stringify({kind:input.kind,sessionId:input.sessionId,studentNumber:input.studentNumber.trim().toLowerCase(),points:input.kind==='points'?input.points:null,reason});
+ const reason=input.reason.trim().slice(0,200)||'Teacher-added record',details=JSON.stringify({kind:input.kind,sessionId:input.sessionId,idNumber:input.idNumber.trim().toLowerCase(),points:input.kind==='points'?input.points:null,reason});
  const previous=()=>db.prepare('SELECT actor_id AS actorId,course_id AS courseId,details FROM audit_log WHERE id=?').bind(input.requestId).first<{actorId:string;courseId:string;details:string}>();
  const same=(row:{actorId:string;courseId:string;details:string})=>row.actorId===user.userId&&row.courseId===course.id&&row.details===details;
  const receipt=await previous();if(receipt){if(!same(receipt))throw Error('This submission was already used with different details. Reopen the form.');return;}
  const session=await db.prepare('SELECT id,opened_at AS openedAt FROM class_sessions WHERE id=? AND course_id=?').bind(input.sessionId,course.id).first<{id:string;openedAt:number}>();
- const students=await db.prepare('SELECT s.id FROM students s JOIN enrolments e ON e.student_id=s.id WHERE lower(trim(s.student_number))=? AND e.course_id=? AND e.active=1 AND e.checked_in_at IS NOT NULL').bind(input.studentNumber.trim().toLowerCase(),course.id).all<{id:string}>();
+ const students=await db.prepare('SELECT s.id FROM students s JOIN enrolments e ON e.student_id=s.id WHERE lower(trim(s.student_number))=? AND e.course_id=? AND e.active=1 AND e.checked_in_at IS NOT NULL').bind(input.idNumber.trim().toLowerCase(),course.id).all<{id:string}>();
  if(!session||students.results.length!==1)throw Error('Choose a class and a uniquely matched student who has joined this course.');
  const student=students.results[0],time=now(),recordId=id();
  const write=input.kind==='attendance'
@@ -235,17 +235,17 @@ export async function importRoster(courseId:string,filename:string,rows:RosterSt
   // Institutional identity is shared across courses. A course import may reuse
   // it, but may never silently overwrite it, even for a course's own students.
   for(const row of clean){
-    const existing=await db.prepare('SELECT name,email FROM students WHERE lower(trim(student_number))=?').bind(row.studentId).all<{name:string;email:string|null}>();
-    if(existing.results.length>1)throw Error('Student ID '+row.studentId+' has conflicting existing records. Ask an administrator to reconcile them; no students were imported.');
+    const existing=await db.prepare('SELECT name,email FROM students WHERE lower(trim(student_number))=?').bind(row.idNumber).all<{name:string;email:string|null}>();
+    if(existing.results.length>1)throw Error('ID number '+row.idNumber+' has conflicting existing records. Ask an administrator to reconcile them; no students were imported.');
     const student=existing.results[0];
-    if(student&&(student.name.trim()!==row.name||(student.email??'').trim().toLowerCase()!==row.email))throw Error('Identity details for '+row.studentId+' differ from the existing student record. Match the verified record or ask an administrator to correct it before importing. No students were imported.');
+    if(student&&(student.name.trim()!==row.name||(student.email??'').trim().toLowerCase()!==row.email))throw Error('Identity details for '+row.idNumber+' differ from the existing student record. Match the verified record or ask an administrator to correct it before importing. No students were imported.');
   }
   if(replace)statements.push(db.prepare('UPDATE enrolments SET active=0 WHERE course_id=?').bind(courseId));
   for(const row of clean){
-    statements.push(db.prepare(`INSERT INTO students(id,student_number,name,email) SELECT ?,?,?,NULLIF(?,'') WHERE NOT EXISTS (SELECT 1 FROM students WHERE lower(trim(student_number))=?)`).bind(id(),row.studentId,row.name,row.email,row.studentId));
+    statements.push(db.prepare(`INSERT INTO students(id,student_number,name,email) SELECT ?,?,?,NULLIF(?,'') WHERE NOT EXISTS (SELECT 1 FROM students WHERE lower(trim(student_number))=?)`).bind(id(),row.idNumber,row.name,row.email,row.idNumber));
     // A concurrent conflicting identity makes the scalar subquery NULL and
     // fails the NOT NULL constraint, rolling back the entire batch.
-    statements.push(db.prepare(`INSERT INTO enrolments(course_id,student_id,active,groups) VALUES (?,(SELECT id FROM students WHERE lower(trim(student_number))=? AND trim(name)=? AND lower(trim(COALESCE(email,'')))=?),1,?) ON CONFLICT(course_id,student_id) DO UPDATE SET active=1,groups=excluded.groups`).bind(courseId,row.studentId,row.name,row.email,row.groups));
+    statements.push(db.prepare(`INSERT INTO enrolments(course_id,student_id,active,groups) VALUES (?,(SELECT id FROM students WHERE lower(trim(student_number))=? AND trim(name)=? AND lower(trim(COALESCE(email,'')))=?),1,?) ON CONFLICT(course_id,student_id) DO UPDATE SET active=1,groups=excluded.groups`).bind(courseId,row.idNumber,row.name,row.email,row.groups));
   }
   statements.push(db.prepare('INSERT INTO audit_log(id,course_id,actor_id,action,entity_type,entity_id,details,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(id(),courseId,user.userId,replace?'roster.replaced':'roster.imported','course',courseId,JSON.stringify({count:clean.length,filename}),now()));
   await db.batch(statements);revalidatePath('/');revalidatePath('/courses');revalidatePath('/league/'+courseId);return {count:clean.length};
@@ -293,7 +293,7 @@ export async function generateOnboardingQr() {
   return {urlPath:`/redeem/onboarding/${qr.token}`};
 }
 
-export async function createAward(input: {sessionId:string|null;points:number;reason:string;expiresSeconds:number;recipientStudentNumbers?:string[];expiryMode?:AwardExpiryMode}) {
+export async function createAward(input: {sessionId:string|null;points:number;reason:string;expiresSeconds:number;recipientIdNumbers?:string[];expiryMode?:AwardExpiryMode}) {
   const { user, course, db } = await context();
   if (!(await canEdit(course.id,user.userId))) throw new Error('You cannot create awards.');
   const clean=validateAwardInput(input);
@@ -301,9 +301,9 @@ export async function createAward(input: {sessionId:string|null;points:number;re
     const session=await db.prepare('SELECT id FROM class_sessions WHERE id=? AND course_id=? AND closed_at IS NULL').bind(clean.sessionId,course.id).first();
     if(!session)throw Error('This class is no longer active. Choose independent coursework or start a class.');
   }
-  const roster=await db.prepare('SELECT s.id,lower(s.student_number) AS studentNumber FROM students s JOIN enrolments e ON e.student_id=s.id WHERE e.course_id=? AND e.active=1 AND e.checked_in_at IS NOT NULL').bind(course.id).all<{id:string;studentNumber:string}>();
-  const byNumber=new Map(roster.results.map(s=>[s.studentNumber,s.id]));
-  const recipients=clean.recipientStudentNumbers?.map(number=>{
+  const roster=await db.prepare('SELECT s.id,lower(s.student_number) AS idNumber FROM students s JOIN enrolments e ON e.student_id=s.id WHERE e.course_id=? AND e.active=1 AND e.checked_in_at IS NOT NULL').bind(course.id).all<{id:string;idNumber:string}>();
+  const byNumber=new Map(roster.results.map(s=>[s.idNumber,s.id]));
+  const recipients=clean.recipientIdNumbers?.map(number=>{
     const studentId=byNumber.get(number);
     if(!studentId)throw Error('A selected student has not joined this course. Refresh the roster and select again.');
     return studentId;
@@ -359,21 +359,21 @@ export async function redeem(kind: 'attendance'|'points', token: string) {
   return { ok:true, message: result.meta.changes ? `You received ${award.points} point${award.points===1?'':'s'}: ${award.reason}.` : 'You already claimed this award.' };
 }
 
-export async function redeemPilot(kind: 'attendance'|'points'|'onboarding', token: string, studentNumber: string) {
-  if(!validRedemption(kind,token)||typeof studentNumber!=='string'||studentNumber.length>100)return redemptionFailure(kind,'INVALID-INPUT','Enter a valid student number and QR.');
+export async function redeemPilot(kind: 'attendance'|'points'|'onboarding', token: string, idNumber: string) {
+  if(!validRedemption(kind,token)||typeof idNumber!=='string'||idNumber.length>100)return redemptionFailure(kind,'INVALID-INPUT','Enter a valid ID number and QR.');
   if((await getChatGPTUser())?.readOnly)return redemptionFailure(kind,'READ-ONLY','Read-only test access cannot change data.');
   if (process.env.PILOT_MODE !== 'true'||process.env.PILOT_ALLOW_UNVERIFIED_STUDENTS!=='true') return redemptionFailure(kind,'PILOT-DISABLED','Pilot access is unavailable. Ask your teacher which sign-in method to use.');
   const db = env.DB;
-  const number = studentNumber.trim();
-  if (!number) return redemptionFailure(kind,'NUMBER-REQUIRED','Enter your student number, such as 12345 or fc12345.');
-  if (!(await studentAttemptAllowed(number,token))) return redemptionFailure(kind,'TOO-MANY-ATTEMPTS','Too many incorrect student-number attempts. Wait ten minutes before trying again.');
+  const number = idNumber.trim();
+  if (!number) return redemptionFailure(kind,'NUMBER-REQUIRED','Enter your ID number, such as 12345 or fc12345.');
+  if (!(await studentAttemptAllowed(number,token))) return redemptionFailure(kind,'TOO-MANY-ATTEMPTS','Too many incorrect ID number attempts. Wait ten minutes before trying again.');
   const student = await findPilotStudent(db,number);
-  if (!student) { return redemptionFailure(kind,'NUMBER-NOT-FOUND','Your student number could not be uniquely matched to the imported roster. Enter 12345 or fc12345, not an email address. If it still fails, ask your teacher to check the number in the roster.'); }
+  if (!student) { return redemptionFailure(kind,'NUMBER-NOT-FOUND','Your ID number could not be uniquely matched to the imported roster. Enter 12345 or fc12345, not an email address. If it still fails, ask your teacher to check the ID number in the roster.'); }
   const digest = await digestToken(token);
   if(kind==='onboarding'){
     const enrolment=await db.prepare(`SELECT e.course_id AS courseId,e.checked_in_at AS checkedInAt FROM enrolments e JOIN courses c ON c.id=e.course_id WHERE e.student_id=? AND e.active=1 AND ? IN (c.onboarding_token_digest,(SELECT token_digest FROM course_onboarding_qrs WHERE course_id=c.id)) AND c.archived_at IS NULL`).bind(student.id,digest).first<{courseId:string;checkedInAt:number|null}>();
     if(!enrolment)return diagnoseRedemptionFailure(db,kind,digest,student.id,now());
-    return {ok:true,message:enrolment.checkedInAt?'This student number has already joined this course.':'Choose an animal nickname to finish joining.',courseId:enrolment.courseId,...(await pilotNicknameState(student.id,enrolment.courseId))};
+    return {ok:true,message:enrolment.checkedInAt?'This ID number has already joined this course.':'Choose an animal nickname to finish joining.',courseId:enrolment.courseId,...(await pilotNicknameState(student.id,enrolment.courseId))};
   }
   if (kind === 'attendance') {
     const session = await db.prepare(`SELECT cs.id,cs.course_id AS courseId,cs.title,cs.opened_by AS recordedBy FROM class_sessions cs JOIN courses c ON c.id=cs.course_id AND c.archived_at IS NULL JOIN enrolments e ON e.course_id=cs.course_id AND e.student_id=? AND e.active=1 AND e.checked_in_at IS NOT NULL WHERE cs.attendance_token_digest=? AND cs.closed_at IS NULL AND cs.attendance_expires_at>=?`).bind(student.id,digest,now()).first<{id:string;courseId:string;title:string;recordedBy:string}>();
@@ -394,14 +394,14 @@ export async function redeemPilot(kind: 'attendance'|'points'|'onboarding', toke
   return { ok:true, message:result.meta.changes?`Received ${award.points} point${award.points===1?'':'s'}: ${award.reason}.`:'This award was already claimed.', courseId:award.courseId, ...(await pilotNicknameState(student.id,award.courseId)) };
 }
 
-export async function choosePilotNickname(kind:'attendance'|'points'|'onboarding',token:string,studentNumber:string,nickname:string){
+export async function choosePilotNickname(kind:'attendance'|'points'|'onboarding',token:string,idNumber:string,nickname:string){
  if((await getChatGPTUser())?.readOnly)return redemptionFailure(kind,'READ-ONLY','Read-only test access cannot change data.');
  if(process.env.PILOT_MODE!=='true'||process.env.PILOT_ALLOW_UNVERIFIED_STUDENTS!=='true')return redemptionFailure(kind,'PILOT-DISABLED','Unverified student access is disabled.');
- if(!validRedemption(kind,token)||typeof studentNumber!=='string'||studentNumber.length>100)return redemptionFailure(kind,'INVALID-INPUT','Enter a valid student number and QR.');
- if(!await studentAttemptAllowed(studentNumber,token))return redemptionFailure(kind,'TOO-MANY-ATTEMPTS','Too many attempts. Wait ten minutes and try again.');
+ if(!validRedemption(kind,token)||typeof idNumber!=='string'||idNumber.length>100)return redemptionFailure(kind,'INVALID-INPUT','Enter a valid ID number and QR.');
+ if(!await studentAttemptAllowed(idNumber,token))return redemptionFailure(kind,'TOO-MANY-ATTEMPTS','Too many attempts. Wait ten minutes and try again.');
  const canonical=canonicalNickname(nickname);if(!canonical)return redemptionFailure(kind,'NICKNAME-REQUIRED','Choose an animal nickname from the list.');
- const db=env.DB,matched=await findPilotStudent(db,studentNumber),digest=await digestToken(token),time=now();
- if(!matched)return redemptionFailure(kind,'NUMBER-NOT-FOUND','The student number could not be uniquely matched.');
+ const db=env.DB,matched=await findPilotStudent(db,idNumber),digest=await digestToken(token),time=now();
+ if(!matched)return redemptionFailure(kind,'NUMBER-NOT-FOUND','The ID number could not be uniquely matched.');
  const eligible=kind==='points'?`SELECT eligible.courseId FROM (${eligiblePointAward}) eligible`
  :kind==='onboarding'?`SELECT c.id AS courseId FROM courses c JOIN enrolments e ON e.course_id=c.id WHERE e.student_id=? AND e.active=1 AND ? IN (c.onboarding_token_digest,(SELECT token_digest FROM course_onboarding_qrs WHERE course_id=c.id)) AND c.archived_at IS NULL`
  :`SELECT c.id AS courseId FROM courses c JOIN enrolments e ON e.course_id=c.id JOIN class_sessions cs ON cs.course_id=c.id WHERE e.student_id=? AND e.active=1 AND e.checked_in_at IS NOT NULL AND cs.attendance_token_digest=? AND cs.attendance_expires_at>=? AND cs.closed_at IS NULL AND c.archived_at IS NULL`;

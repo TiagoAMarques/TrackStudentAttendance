@@ -1,6 +1,6 @@
 export type RankedNickname={nickname:string;points:number;rank:number};
 // Public rankings include only active, joined students who chose public aliases.
-// Student IDs are used for aggregation but never selected into the response.
+// ID numbers are used for aggregation but never selected into the response.
 export const publicRankingSql=`WITH totals AS (
  SELECT lp.alias AS nickname,COALESCE(SUM(pt.points),0) AS points
  FROM enrolments e JOIN leaderboard_preferences lp ON lp.course_id=e.course_id AND lp.student_id=e.student_id

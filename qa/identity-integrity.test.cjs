@@ -7,7 +7,7 @@ async function integrityChecks(){
  const dbState=()=>JSON.stringify(['students','enrolments','attendance','point_transactions','audit_log','leaderboard_preferences','users','class_sessions'].map(t=>[t,sqlite.prepare('SELECT * FROM '+t+' ORDER BY rowid').all()]));
  const teacher=user;
  const token='synthetic-integrity-attendance';sqlite.prepare("UPDATE class_sessions SET attendance_token_digest=?,attendance_expires_at=? WHERE id='session'").run(createHash('sha256').update(token).digest('hex'),time+3600);
- // No implicit student-number identity, even when teacher pilot is enabled.
+ // No implicit ID number identity, even when teacher pilot is enabled.
  delete process.env.PILOT_ALLOW_UNVERIFIED_STUDENTS;
  const disabledBefore=dbState();assert.equal((await actions.redeemPilot('attendance',token,'fc1')).ok,false);assert.equal((await actions.choosePilotNickname('onboarding',token,'fc1','Owl')).ok,false);assert.equal(dbState(),disabledBefore);
  process.env.PILOT_ALLOW_UNVERIFIED_STUDENTS='true';
@@ -23,10 +23,10 @@ async function integrityChecks(){
  assert.equal((await actions.redeemPilot('attendance',token,'fc2')).ok,false);db.prepare=prepare;
  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM attendance WHERE student_id='s2'").get().n,0);sqlite.exec("UPDATE courses SET archived_at=NULL WHERE id='course'");
  // Corrections are auditable and explicit. Lost-response retries cannot duplicate points.
- const manual={kind:'points',sessionId:'session',studentNumber:'fc1',points:3,reason:'Manual synthetic award',requestId:randomUUID()};
+ const manual={kind:'points',sessionId:'session',idNumber:'fc1',points:3,reason:'Manual synthetic award',requestId:randomUUID()};
  await actions.addManualRecord(manual);const afterManual=dbState();await actions.addManualRecord(manual);assert.equal(dbState(),afterManual);
  await assert.rejects(()=>actions.addManualRecord({...manual,points:4}),/different details/);
- const restore={kind:'attendance',sessionId:'session',studentNumber:'fc1',reason:'Teacher verified attendance',requestId:randomUUID()};
+ const restore={kind:'attendance',sessionId:'session',idNumber:'fc1',reason:'Teacher verified attendance',requestId:randomUUID()};
  await actions.addManualRecord(restore);assert.equal(sqlite.prepare('SELECT voided_at FROM attendance WHERE id=?').get(attendance.id).voided_at,null);
  // Force an audit insertion failure and prove the business write rolls back.
  sqlite.exec("CREATE TRIGGER synthetic_audit_failure BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT,'Synthetic audit failure'); END");
@@ -35,18 +35,18 @@ async function integrityChecks(){
  await assert.rejects(()=>actions.reversePointTransaction('legacy-claim','Failure probe'),/Synthetic audit/);assert.equal(dbState(),before);
  sqlite.exec('DROP TRIGGER synthetic_audit_failure');
  // Replace keeps retained onboarding and all historical records.
- const roster=[{studentId:'FC1',name:'Student One',email:'one@example.test',groups:'A'}];
+ const roster=[{idNumber:'FC1',name:'Student One',email:'one@example.test',groups:'A'}];
  await actions.importRoster('course','courseid_TEST_participants.csv',roster,true);
  assert.equal(sqlite.prepare("SELECT checked_in_at FROM enrolments WHERE course_id='course' AND student_id='s1'").get().checked_in_at,1);
  assert.equal(sqlite.prepare("SELECT active FROM enrolments WHERE course_id='course' AND student_id='s2'").get().active,0);
- before=dbState();await assert.rejects(()=>actions.importRoster('course','courseid_TEST_participants.csv',[{studentId:'fc4',name:'Wrong shared identity',email:'wrong@example.test',groups:''}],true),/Identity details/);assert.equal(dbState(),before);
- await actions.importRoster('course','courseid_TEST_participants.csv',[{studentId:'FC4',name:'Student Four',email:'four@example.test',groups:''}]);
+ before=dbState();await assert.rejects(()=>actions.importRoster('course','courseid_TEST_participants.csv',[{idNumber:'fc4',name:'Wrong shared identity',email:'wrong@example.test',groups:''}],true),/Identity details/);assert.equal(dbState(),before);
+ await actions.importRoster('course','courseid_TEST_participants.csv',[{idNumber:'FC4',name:'Student Four',email:'four@example.test',groups:''}]);
  assert.equal(sqlite.prepare("SELECT name FROM students WHERE id='s4'").get().name,'Student Four');
  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM students WHERE lower(student_number)='fc1'").get().n,1);
  assert.throws(()=>sqlite.exec("INSERT INTO students(id,student_number,name) VALUES ('collision',' FC1 ','Duplicate')"),/conflicts/);
  assert.throws(()=>sqlite.exec("UPDATE students SET student_number='FC1' WHERE id='s2'"),/conflicts/);
  // Untrusted spreadsheet cells are neutralised, while numeric points remain numeric.
- await actions.importRoster('course','courseid_TEST_participants.csv',[{studentId:'NEWID',name:'=1+1',email:'formula@example.test',groups:'@SUM(A1)'}]);
+ await actions.importRoster('course','courseid_TEST_participants.csv',[{idNumber:'NEWID',name:'=1+1',email:'formula@example.test',groups:'@SUM(A1)'}]);
  assert.equal(sqlite.prepare("SELECT student_number FROM students WHERE email='formula@example.test'").get().student_number,'newid');
  const exporter=load('app/export/[courseId]/[kind]/route.ts',{'cloudflare:workers':{env:{DB:db}},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
  const csv=await exporter.GET(new Request('https://example.test'),{params:Promise.resolve({courseId:'course',kind:'enrolments'})});

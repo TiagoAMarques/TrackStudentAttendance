@@ -20,7 +20,6 @@
 # misc
 .DS_Store
 *.pem
-.Rhistory
 
 # debug
 npm-debug.log*
@@ -41,10 +40,6 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
-/.sites-publish/
-/archive/
-/tsconfig.tsbuildinfo
-/folderdescriptionreadme.html
 
-# Private operational input data
-/local-data/
+# Private student exports
+/courseid_*_participants.csv

@@ -12,7 +12,7 @@ with class/independent-coursework scope, all-joined/selected-students audience,
 searchable recipient checkboxes, and visible creation errors. Independent awards
 count toward course totals only. Restricted claims are enforced server-side in
 both pilot and signed-in redemption, including the nickname-completion route.
-Pilot identity still relies on the entered student number.
+Pilot identity still relies on the entered ID number.
 
 New migration: `drizzle/0008_independent_point_awards.sql`. It preserves award IDs
 and transactions while making session association optional, and adds course
@@ -24,7 +24,7 @@ Tests: `node qa/point-awards.test.cjs` and
 `node qa/point-awards-d1.test.cjs`. Build and TypeScript checks passed on the
 implementation. Latest temporary build path is recorded in ignored
 `outputs/points-awards-build-path.txt`; rebuild if the source has changed.
-Version 22 was published successfully. Version 23 was then published successfully on 10 September 2026 (commit be7c35f02bed4c7b7085394645fee62c89865e5f). It adds 30-minute, until-class-close, and course-active expiry modes; teachers can deactivate QRs from the generated-code view or course records. Fixed timers on class awards still end when the class closes. Course-active mode survives class closure but stops on course archival or QR deactivation. Existing QRs retain their original timed expiry through migration 0009_point_award_expiry_modes.sql. Student-number lookup now accepts numeric and fc-prefixed forms, rejects ambiguous duplicate identities, and tells students not to enter an email address. A reported missing-roster error was consistent with this former exact-format mismatch, but the actual submitted input was not available. Live roster checks were read-only; all test claims used synthetic records.
+Version 22 was published successfully. Version 23 was then published successfully on 10 September 2026 (commit be7c35f02bed4c7b7085394645fee62c89865e5f). It adds 30-minute, until-class-close, and course-active expiry modes; teachers can deactivate QRs from the generated-code view or course records. Fixed timers on class awards still end when the class closes. Course-active mode survives class closure but stops on course archival or QR deactivation. Existing QRs retain their original timed expiry through migration 0009_point_award_expiry_modes.sql. ID number lookup now accepts numeric and fc-prefixed forms, rejects ambiguous duplicate identities, and tells students not to enter an email address. A reported missing-roster error was consistent with this former exact-format mismatch, but the actual submitted input was not available. Live roster checks were read-only; all test claims used synthetic records.
 
 Tiago is conducting a live test with real students. He has emailed university colleagues about connecting Pulse to university Single Sign-On (SSO). We are waiting for their response. No SSO implementation or authentication changes were made in this session.
 
@@ -44,7 +44,7 @@ Treat these as a dated snapshot; inspect the current source and live publication
 
 ## Authentication today
 
-The app is running in pilot mode. Teachers use access codes. Students enter their student number; this does **not** verify university identity. Pilot attendance and participation records are marked accordingly.
+The app is running in pilot mode. Teachers use access codes. Students enter their ID number; this does **not** verify university identity. Pilot attendance and participation records are marked accordingly.
 
 The code also has a non-pilot ChatGPT authentication path. That is not university OIDC and should not be mistaken for an existing university integration.
 
@@ -80,7 +80,7 @@ The assessment page did not expose readable instructions through the retrieval m
 1. Confirmation that the current domain/hosting is acceptable, or details of the required university-approved destination.
 2. OIDC issuer and discovery URL; client ID; client authentication method and any required secret, delivered through an appropriate secure channel.
 3. Exact permitted redirect/callback URI(s), post-logout URI(s), and any provider-specific requirements. Root URL is not the callback URL. No new university callback route has been implemented or agreed yet.
-4. Available scopes and claims: a stable account identifier, and the authoritative attribute or approved process for mapping that identity to a roster student number.
+4. Available scopes and claims: a stable account identifier, and the authoritative attribute or approved process for mapping that identity to a roster ID number.
 5. Whether teacher identities/affiliations are also available, and how account changes and deactivation are handled.
 6. Test client/accounts or an agreed test procedure, including any MFA or session/logout expectations.
 7. The RGPD review process, responsible contacts, and any hosting or data-processing conditions.
@@ -93,7 +93,7 @@ The intended student journey is: scan a classroom QR code, authenticate on the u
 
 Implementation should use a maintained OIDC implementation compatible with the deployed runtime, Authorization Code flow with PKCE, appropriate state/nonce checks, full token validation, and secure server-managed sessions. Confirm the university's actual configuration before choosing the final integration details.
 
-Map identities using the issuer and stable subject identifier, plus a trusted roster mapping. Do not allow a typed student number or an unverified email to establish ownership of a student record. Plan existing user/student linking and teacher ownership migration explicitly.
+Map identities using the issuer and stable subject identifier, plus a trusted roster mapping. Do not allow a typed ID number or an unverified email to establish ownership of a student record. Plan existing user/student linking and teacher ownership migration explicitly.
 
 University login authenticates a person; it does not automatically grant teacher privileges, prove enrolment, or establish physical classroom presence. Continue enforcing course permissions, enrolment, token expiry, and duplicate-redemption protection on the server.
 

@@ -9,7 +9,7 @@ Implemented locally, 12 September 2026. This release has not been deployed. It d
 - **Sessions:** manual and scheduled starts are protected against concurrent active sessions by the write and database triggers. Existing duplicate sessions are not silently closed.
 - **Roster replacement:** retained students keep their joined status, nicknames, attendance and points. Removed memberships become inactive without erasing their historical joined status.
 - **Shared identities:** course imports cannot overwrite global student names/emails. Conflicting details reject the entire import before changes. Administrators can explicitly correct verified identity details on the Teachers page; the change is audited in every affected course.
-- **Student numbers:** new IDs are trimmed and lowercased. Case variants reuse the existing identity. Database guards prevent new case/whitespace collisions. Existing ambiguous records require review rather than an automatic merge.
+- **ID numbers:** new IDs are trimmed and lowercased. Case variants reuse the existing identity. Database guards prevent new case/whitespace collisions. Existing ambiguous records require review rather than an automatic merge.
 - **Exports:** spreadsheet formula-leading strings are neutralised in CSV exports. Numeric values, including negative points, remain numeric. Sensitive downloads use private/no-store caching.
 - **Nickname capacity:** numbered animal variants become available when the initial names are taken; joining no longer stops at 225 nicknames. Onboarding state, nickname and onboarding audit are committed atomically.
 - **Audit consistency:** manual attendance/points, corrections, reversals and session writes roll back if their audit insertion fails. Nickname/onboarding completion has the same transaction protection.
@@ -17,7 +17,7 @@ Implemented locally, 12 September 2026. This release has not been deployed. It d
 
 ## Identity boundaries
 
-Student-number knowledge is not authentication. `PILOT_ALLOW_UNVERIFIED_STUDENTS` now defaults to disabled and must explicitly equal `true` to allow the legacy synthetic-test flow. Names have also been removed from that flow's responses. When deliberately enabled, the flow is still unverified and can expose synthetic nicknames; it is not suitable for real student identity protection.
+ID number knowledge is not authentication. `PILOT_ALLOW_UNVERIFIED_STUDENTS` now defaults to disabled and must explicitly equal `true` to allow the legacy synthetic-test flow. Names have also been removed from that flow's responses. When deliberately enabled, the flow is still unverified and can expose synthetic nicknames; it is not suitable for real student identity protection.
 
 `PILOT_MODE=true` continues to enable teacher-code login. It no longer implicitly enables unverified student submissions. The existing live site has not been changed by this local implementation. Deploying with no new configuration will disable the legacy student QR flow; decide the testing/production configuration before deployment.
 

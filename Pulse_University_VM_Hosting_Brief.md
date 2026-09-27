@@ -75,13 +75,13 @@ These are observed versions, not a recommendation to freeze old dependencies. Th
 
 ## 5. Authentication and information needed from SSO administrators
 
-Current pilot: teachers use individual access codes; students enter a student number. That does not verify student identity. Hosting the application on a university VM does not by itself fix that limitation. Do not disable `PILOT_MODE` and assume university SSO is enabled: the other existing path is platform-specific ChatGPT authentication.
+Current pilot: teachers use individual access codes; students enter an ID number. That does not verify student identity. Hosting the application on a university VM does not by itself fix that limitation. Do not disable `PILOT_MODE` and assume university SSO is enabled: the other existing path is platform-specific ChatGPT authentication.
 
 For the intended OIDC integration, please supply:
 
 1. Issuer and discovery URL, plus access/network requirements for the provider.
 2. Client registration details, client ID, supported client authentication method and any secret through the university's secure channel.
-3. Available scopes and claims, especially a stable account identifier and an authoritative mapping to the roster's student number. Also identify how teachers are recognised and authorised.
+3. Available scopes and claims, especially a stable account identifier and an authoritative mapping to the roster's ID number. Also identify how teachers are recognised and authorised.
 4. Required MFA/session duration, logout behaviour, account deactivation and affiliation rules.
 5. Test client/accounts and a test procedure for students and teachers.
 6. Registration process for exact callback and logout URLs in staging and production.

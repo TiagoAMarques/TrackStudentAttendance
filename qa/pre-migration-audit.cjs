@@ -10,7 +10,7 @@ async function assess(){
  const note=(id,detail)=>{findings.push({id,detail});console.log(id+': '+detail)};
  const attendanceToken='synthetic-audit-attendance';
  sqlite.prepare("UPDATE class_sessions SET attendance_token_digest=?,attendance_expires_at=?,closed_at=NULL WHERE id='session'").run(createHash('sha256').update(attendanceToken).digest('hex'),time+3600);
- let response=await actions.redeemPilot('attendance',attendanceToken,'fc1');assert.equal(response.ok,true);assert.ok(response.message.includes('Student One'));note('A01','Unauthenticated student-number redemption returns the matched student name.');
+ let response=await actions.redeemPilot('attendance',attendanceToken,'fc1');assert.equal(response.ok,true);assert.ok(response.message.includes('Student One'));note('A01','Unauthenticated ID number redemption returns the matched student name.');
  const attendanceId=sqlite.prepare("SELECT id FROM attendance WHERE student_id='s1' AND session_id='session'").get().id;
  await actions.voidAttendance(attendanceId,'Synthetic teacher correction');
  assert.ok(sqlite.prepare('SELECT voided_at FROM attendance WHERE id=?').get(attendanceId).voided_at);
@@ -30,7 +30,7 @@ async function assess(){
  response=await route.GET(new Request('https://example.test'),{params:Promise.resolve({courseId:'course',kind:'enrolments'})});
  assert.ok((await response.text()).includes('"=1+1"'));note('A07','CSV output contains an unneutralised formula-leading cell.');
  await actions.importRoster('course','courseid_TEST_participants.csv',[{studentId:'FC1',name:'Case variant',email:'case@example.test',groups:''}]);
- assert.equal(await load('app/student-number.ts').findPilotStudent(db,'fc1'),null);note('A08','Case-variant roster import creates ambiguous identities and blocks redemption.');
+ assert.equal(await load('app/id-number.ts').findPilotStudent(db,'fc1'),null);note('A08','Case-variant roster import creates ambiguous identities and blocks redemption.');
  const secretToken='synthetic-onboarding';sqlite.prepare("UPDATE courses SET onboarding_token_digest=? WHERE id='course'").run(createHash('sha256').update(secretToken).digest('hex'));
  sqlite.exec("UPDATE enrolments SET active=1 WHERE course_id='course'; INSERT INTO leaderboard_preferences(course_id,student_id,visibility,alias) VALUES ('course','s1','public','Owl'),('course','s2','public','Fox'),('course','s3','public','Bear')");
  response=await actions.redeemPilot('onboarding',secretToken,'fc5');assert.equal(response.ok,true);assert.deepEqual(response.availableNicknames,[]);note('A09','Exhausting the allowed nickname list leaves a new student with no joining option. Actual production list size: '+load('app/animal-nicknames.ts').ANIMAL_NICKNAMES.length+'.');

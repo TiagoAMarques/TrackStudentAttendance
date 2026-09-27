@@ -16,11 +16,11 @@ async function teacherChecks(){
  await assert.rejects(()=>management.getTeacherAccounts(),/administrator/);
  assert.equal((await auth.pilotLogin('synthetic-admin-code')).ok,true);
  assert.equal((await auth.getPilotTeacherSession()).role,'admin');
- await assert.rejects(()=>identities.linkStudentIdentity({studentNumber:'fc1',subject:'verified-reference',verified:false}),/Confirm/);
- await identities.linkStudentIdentity({studentNumber:'fc1',subject:'verified-reference',verified:true});
- await identities.linkStudentIdentity({studentNumber:'FC1',subject:'verified-reference',verified:true});
- await assert.rejects(()=>identities.linkStudentIdentity({studentNumber:'fc2',subject:'verified-reference',verified:true}),/another link/);
- await identities.correctStudentIdentity({studentNumber:'fc4',name:'Verified Student Four',email:'verified-four@example.test',verified:true});
+ await assert.rejects(()=>identities.linkStudentIdentity({idNumber:'fc1',subject:'verified-reference',verified:false}),/Confirm/);
+ await identities.linkStudentIdentity({idNumber:'fc1',subject:'verified-reference',verified:true});
+ await identities.linkStudentIdentity({idNumber:'FC1',subject:'verified-reference',verified:true});
+ await assert.rejects(()=>identities.linkStudentIdentity({idNumber:'fc2',subject:'verified-reference',verified:true}),/another link/);
+ await identities.correctStudentIdentity({idNumber:'fc4',name:'Verified Student Four',email:'verified-four@example.test',verified:true});
  assert.equal(sqlite.prepare("SELECT name FROM students WHERE id='s4'").get().name,'Verified Student Four');
  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM audit_log WHERE action='student.identity_corrected' AND course_id='other'").get().n,1);
  const created=await management.addTeacherAccount({displayName:'Test Teacher',email:'test-teacher@pulse.invalid',readOnly:true,courseIds:[]});
@@ -32,8 +32,8 @@ async function teacherChecks(){
  await assert.rejects(()=>management.addTeacherAccount({displayName:'Out of scope',email:'other@example.test',readOnly:false,courseIds:['other']}),/own/);
  await auth.pilotLogin(created.code);
  assert.equal((await auth.getPilotTeacherSession()).role,'viewer');
- await assert.rejects(()=>identities.linkStudentIdentity({studentNumber:'fc2',subject:'bad-reference',verified:true}),/administrator/);
- await assert.rejects(()=>identities.correctStudentIdentity({studentNumber:'fc2',name:'Bad',email:'bad@example.test',verified:true}),/administrator/);
+ await assert.rejects(()=>identities.linkStudentIdentity({idNumber:'fc2',subject:'bad-reference',verified:true}),/administrator/);
+ await assert.rejects(()=>identities.correctStudentIdentity({idNumber:'fc2',name:'Bad',email:'bad@example.test',verified:true}),/administrator/);
  assert.equal('code' in await auth.getPilotTeacherSession(),false);
  await assert.rejects(()=>management.addTeacherAccount({displayName:'Escalation',email:'bad@example.test',readOnly:false,courseIds:[]}),/administrator/);
  await assert.rejects(()=>management.resetTeacherCode(viewer.id),/administrator/);
@@ -63,7 +63,7 @@ async function teacherChecks(){
  await actions.getCourseRecords();await actions.getLiveClassroom('session');await actions.getScheduledClasses('course');await actions.switchCourse('other');
  const exporter=load('app/export/[courseId]/[kind]/route.ts',{'cloudflare:workers':{env:{DB:db}},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
  assert.equal((await exporter.GET(new Request('http://local'),{params:Promise.resolve({courseId:'other',kind:'enrolments'})})).status,200);
- const mutations=[()=>actions.createCourse({code:'BAD',name:'Bad course',teacherIds:[]}),()=>actions.importTimetable('course',[]),()=>actions.startScheduledClass('course','schedule',30),()=>actions.importClassAttendance('course','schedule',[{classId:'T01',studentNumber:'fc1'}],randomUUID()),()=>actions.importRoster('course','courseid_TEST_participants.csv',[]),()=>actions.openSession({title:'bad',room:'',attendanceMinutes:30}),()=>actions.closeSession('session'),()=>actions.rotateAttendanceToken('session'),()=>actions.generateOnboardingQr(),()=>actions.createAward(input),()=>actions.closePointAward('legacy'),()=>actions.addManualRecord({kind:'points',sessionId:'session',studentNumber:'fc1',points:5,reason:'bad'}),()=>actions.voidAttendance('absent','bad'),()=>actions.reversePointTransaction('legacy-claim','bad')];
+ const mutations=[()=>actions.createCourse({code:'BAD',name:'Bad course',teacherIds:[]}),()=>actions.importTimetable('course',[]),()=>actions.startScheduledClass('course','schedule',30),()=>actions.importClassAttendance('course','schedule',[{classId:'T01',idNumber:'fc1'}],randomUUID()),()=>actions.importRoster('course','courseid_TEST_participants.csv',[]),()=>actions.openSession({title:'bad',room:'',attendanceMinutes:30}),()=>actions.closeSession('session'),()=>actions.rotateAttendanceToken('session'),()=>actions.generateOnboardingQr(),()=>actions.createAward(input),()=>actions.closePointAward('legacy'),()=>actions.addManualRecord({kind:'points',sessionId:'session',idNumber:'fc1',points:5,reason:'bad'}),()=>actions.voidAttendance('absent','bad'),()=>actions.reversePointTransaction('legacy-claim','bad')];
  for(const mutate of mutations)await assert.rejects(mutate);
  assert.equal((await actions.redeem('attendance','attendance')).ok,false);
  assert.equal((await actions.redeemPilot('onboarding','anything','fc1')).ok,false);

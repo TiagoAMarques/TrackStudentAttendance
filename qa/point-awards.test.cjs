@@ -38,7 +38,7 @@ const records=load('app/course-records.ts',{'cloudflare:workers':{env:{DB:db}}})
 const actions=load('app/actions.ts',{
  'cloudflare:workers':{env:{DB:db}},'next/cache':{revalidatePath(){}},'next/headers':{headers:async()=>new Map(),cookies:async()=>({set(){}})},
  './request-security':security,
- './chatgpt-auth':{getChatGPTUser:async()=>user},'./point-award-policy':policy,'./student-number':load('app/student-number.ts'),'./redemption-errors':load('app/redemption-errors.ts'),
+ './chatgpt-auth':{getChatGPTUser:async()=>user},'./point-award-policy':policy,'./id-number':load('app/id-number.ts'),'./redemption-errors':load('app/redemption-errors.ts'),
  './data':{ensureTeacher:async()=>({id:'course',code:'TEST',name:'Test course'}),id:randomUUID,now:()=>time,digestToken:async t=>createHash('sha256').update(t).digest('hex'),initials:()=>''},
  './roster-import':load('app/roster-import.ts'),'./attendance-import':load('app/attendance-import.ts'),'./animal-nicknames':{ANIMAL_NICKNAMES:['Owl','Fox','Bear']},'./pilot-auth':{},'./course-records':records,'./timetable':{},
 });
@@ -63,19 +63,19 @@ async function main(){
   assert.match((await actions.redeemPilot('points',token(all),'fc1')).message,/already/);
   assert.equal((await actions.redeemPilot('points',token(all),'fc4')).ok,false);
   assert.equal((await actions.redeemPilot('points',token(all),'fc5')).ok,false);
-  const selected=await actions.createAward({...input,recipientStudentNumbers:['fc1','FC2','fc1']});
+  const selected=await actions.createAward({...input,recipientIdNumbers:['fc1','FC2','fc1']});
   assert.match((await actions.redeemPilot('points',token(selected),'fc3')).message,/PTS-NOT-SELECTED/);
   assert.equal((await actions.choosePilotNickname('points',token(selected),'fc3','Owl')).ok,false);
   assert.equal((await actions.redeemPilot('points',token(selected),'fc1')).ok,true);
   assert.equal((await actions.redeemPilot('points',token(selected),'fc2')).ok,true);
   assert.equal((await actions.choosePilotNickname('points',token(selected),'fc1','Owl')).ok,true);
-  const single=await actions.createAward({...input,recipientStudentNumbers:['fc1']});
+  const single=await actions.createAward({...input,recipientIdNumbers:['fc1']});
   assert.equal((await actions.redeemPilot('points',token(single),'fc2')).ok,false);
   const simultaneous=await Promise.all([actions.redeemPilot('points',token(single),'fc1'),actions.redeemPilot('points',token(single),'fc1')]);
   assert.equal(simultaneous.filter(r=>r.ok&&!r.message.includes('already')).length,1);
   assert.equal(simultaneous.filter(r=>r.message.includes('already')).length,1);
-  for(const patch of [{recipientStudentNumbers:[]},{recipientStudentNumbers:['fc4']},{recipientStudentNumbers:['fc5']},{sessionId:'foreign'},{points:NaN},{points:1.2},{expiresSeconds:NaN}])await assert.rejects(()=>actions.createAward({...input,...patch}));
-  const classAward=await actions.createAward({...input,sessionId:'session',recipientStudentNumbers:['fc2']});
+  for(const patch of [{recipientIdNumbers:[]},{recipientIdNumbers:['fc4']},{recipientIdNumbers:['fc5']},{sessionId:'foreign'},{points:NaN},{points:1.2},{expiresSeconds:NaN}])await assert.rejects(()=>actions.createAward({...input,...patch}));
+  const classAward=await actions.createAward({...input,sessionId:'session',recipientIdNumbers:['fc2']});
   assert.equal((await actions.redeemPilot('points',token(classAward),'fc1')).ok,false);
   assert.equal((await actions.redeemPilot('points',token(classAward),'fc2')).ok,true);
   sqlite.exec("UPDATE class_sessions SET closed_at=2 WHERE id='session'");
@@ -85,7 +85,7 @@ async function main(){
   sqlite.exec("UPDATE point_awards SET expires_at=1 WHERE reason='Independent work'");
   assert.equal((await actions.redeemPilot('points',token(all),'fc1')).ok,false);
   // Authenticated redemption must enforce exactly the same recipient policy.
-  const signed=await actions.createAward({...input,recipientStudentNumbers:['fc1']});
+  const signed=await actions.createAward({...input,recipientIdNumbers:['fc1']});
   sqlite.exec("INSERT INTO student_identity_links VALUES ('sites','signed-two','s2','teacher',1),('sites','signed-one','s1','teacher',1)");
   user={userId:'signed-two',email:'two@example.test',displayName:'Student Two',identityProvider:'sites',identitySubject:'signed-two'};
   assert.equal((await actions.redeem('points',token(signed))).ok,false);
@@ -104,7 +104,7 @@ async function main(){
   const classTotal=sqlite.prepare("SELECT SUM(pt.points) AS n FROM point_transactions pt LEFT JOIN point_awards pa ON pa.id=pt.award_id WHERE pa.session_id='session'").get().n;
   assert.equal(classTotal,5); // legacy 2 + class award 3; independent work excluded.
   // Prefix mismatch regression: all pilot routes resolve fc1 and 1 identically.
-  const numbers=load('app/student-number.ts');
+  const numbers=load('app/id-number.ts');
   assert.equal((await numbers.findPilotStudent(db,' 1 ')).id,'s1');
   assert.equal((await numbers.findPilotStudent(db,'FC1')).id,'s1');
   assert.equal(await numbers.findPilotStudent(db,'one@example.test'),null);
@@ -117,12 +117,12 @@ async function main(){
   sqlite.exec("INSERT INTO attendance(id,session_id,student_id,recorded_by,source,identity_verification,recorded_at) VALUES ('nickname-attendance','session','numeric','teacher','pilot','pilot_student_number',1800000000)");
   const nicknameRecords=await records.loadCourseRecords('course');
   for(const key of ['enrolments','league','events','attendance','checkedIn']){
-    const matching=nicknameRecords[key].filter(row=>row.studentId==='12345');
+    const matching=nicknameRecords[key].filter(row=>row.idNumber==='12345');
     assert.ok(matching.length,key);
     assert.ok(matching.every(row=>row.nickname==='Fox'),key);
   }
-  assert.equal(nicknameRecords.enrolments.find(row=>row.studentId==='fc5').nickname,'');
-  assert.ok(nicknameRecords.events.filter(row=>!row.studentId).every(row=>row.nickname===''));
+  assert.equal(nicknameRecords.enrolments.find(row=>row.idNumber==='fc5').nickname,'');
+  assert.ok(nicknameRecords.events.filter(row=>!row.idNumber).every(row=>row.nickname===''));
   const exportRoute=load('app/export/[courseId]/[kind]/route.ts',{'cloudflare:workers':{env:{DB:db}},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
   for(const kind of ['enrolments','league','events','attendance','checked-in']){
     const response=await exportRoute.GET(new Request('https://example.test'),{params:Promise.resolve({courseId:'course',kind})});
@@ -172,7 +172,7 @@ async function main(){
   await assert.rejects(()=>actions.createAward({...input,expiryMode:'invalid'}));
   sqlite.exec("UPDATE class_sessions SET closed_at=NULL WHERE id='session'");
   const lecture=await actions.createAward({...input,sessionId:'session',expiryMode:'session'});
-  const persistent=await actions.createAward({...input,sessionId:'session',expiryMode:'course',recipientStudentNumbers:['fc1']});
+  const persistent=await actions.createAward({...input,sessionId:'session',expiryMode:'course',recipientIdNumbers:['fc1']});
   assert.equal(lecture.expiresAt,null);assert.equal(persistent.expiresAt,null);
   time+=4*60*60;assert.equal((await actions.redeemPilot('points',token(lecture),'fc1')).ok,true);
   sqlite.exec("UPDATE class_sessions SET closed_at=2 WHERE id='session'");
@@ -189,16 +189,16 @@ async function main(){
   sqlite.exec("UPDATE courses SET archived_at=NULL WHERE id='course'");
   // A teacher can recover attendance from a two-column CSV, even when no QR session was opened.
   sqlite.exec("INSERT INTO scheduled_classes(id,course_id,class_id,class_date,week,class_time,room,teacher,comments,imported_by,created_at) VALUES ('scheduled-csv','course','T-CSV','2030-09-16',1,'10:00','Lab','Teacher','','teacher',1)");
-  const attendanceRows=[{classId:'T-CSV',studentNumber:'fc2'},{classId:'T-CSV',studentNumber:'fc5'}];
+  const attendanceRows=[{classId:'T-CSV',idNumber:'fc2'},{classId:'T-CSV',idNumber:'fc5'}];
   const imported=await actions.importClassAttendance('course','scheduled-csv',attendanceRows,randomUUID());
   assert.deepEqual(imported,{imported:2,skipped:0,classId:'T-CSV',sessionCreated:true});
   const csvSession=sqlite.prepare("SELECT cs.id,cs.closed_at closedAt FROM class_sessions cs JOIN scheduled_classes sc ON sc.session_id=cs.id WHERE sc.id='scheduled-csv'").get();
   assert.ok(csvSession.closedAt);assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM attendance WHERE session_id=? AND source='teacher_csv' AND identity_verification='teacher_confirmed'").get(csvSession.id).n,2);
   assert.deepEqual(await actions.importClassAttendance('course','scheduled-csv',attendanceRows,randomUUID()),{imported:0,skipped:2,classId:'T-CSV',sessionCreated:false});
-  await assert.rejects(()=>actions.importClassAttendance('course','scheduled-csv',[{classId:'WRONG',studentNumber:'fc1'}],randomUUID()),/Class ID must be T-CSV/);
-  await assert.rejects(()=>actions.importClassAttendance('course','scheduled-csv',[{classId:'T-CSV',studentNumber:'missing'}],randomUUID()),/Not enrolled/);
+  await assert.rejects(()=>actions.importClassAttendance('course','scheduled-csv',[{classId:'WRONG',idNumber:'fc1'}],randomUUID()),/Class ID must be T-CSV/);
+  await assert.rejects(()=>actions.importClassAttendance('course','scheduled-csv',[{classId:'T-CSV',idNumber:'missing'}],randomUUID()),/Not enrolled/);
   user=null;await assert.rejects(()=>actions.createAward(input),/sign in/);
   user={userId:'outsider'};await assert.rejects(()=>actions.createAward(input),/cannot create/);
-  console.log('PASS: migration preservation; recipients and both auth paths; student-number normalization and ambiguity; onboarding/nicknames; fixed, class and course lifetimes; CSV attendance recovery; revocation; duplicate, enrolment and permission checks; reporting, backup, reversal and class totals.');
+  console.log('PASS: migration preservation; recipients and both auth paths; ID number normalization and ambiguity; onboarding/nicknames; fixed, class and course lifetimes; CSV attendance recovery; revocation; duplicate, enrolment and permission checks; reporting, backup, reversal and class totals.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

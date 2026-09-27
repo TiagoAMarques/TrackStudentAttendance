@@ -9,7 +9,7 @@ QR token, or other recipients' identities are embedded in the codes.
 
 | Code suffix | Meaning / next step |
 | --- | --- |
-| NUMBER-REQUIRED | Enter the student number. |
+| NUMBER-REQUIRED | Enter the ID number. |
 | NUMBER-NOT-FOUND | Number not uniquely matched. Numeric and `fc` forms work; email addresses do not. Check for a typo or duplicate/import problem. |
 | ACCOUNT-NOT-FOUND | Signed-in account cannot be matched to a roster record. |
 | SIGN-IN | Authentication is required. |

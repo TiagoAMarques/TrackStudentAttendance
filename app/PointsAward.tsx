@@ -29,7 +29,7 @@ export default function PointsAward({data,initialPoints}:{data:DashboardData;ini
   const canvas=useRef<HTMLCanvasElement>(null);
   const joined=data.roster.filter(student=>student.checkedInAt!==null);
   const eligible=mode==='direct'?data.roster:joined;
-  const filtered=eligible.filter(student=>`${student.name} ${student.studentId}`.toLowerCase().includes(search.toLowerCase().trim()));
+  const filtered=eligible.filter(student=>`${student.name} ${student.idNumber}`.toLowerCase().includes(search.toLowerCase().trim()));
 
   useEffect(()=>{
     if(!result||result.closed)return;
@@ -44,8 +44,8 @@ export default function PointsAward({data,initialPoints}:{data:DashboardData;ini
     startTransition(async()=>{
       try{
         const expiryMode=expires==='session'||expires==='course'?expires:'timed';
-        const award=await createAward({sessionId:sessionId||null,points,reason:reason||(sessionId?'Class participation':'Independent coursework'),expiresSeconds:expiryMode==='timed'?Number(expires):300,expiryMode,...(restricted?{recipientStudentNumbers:selected}:{})});
-        setResult({url:(data.pilotOrigin??location.origin)+award.urlPath,expiresAt:award.expiresAt,expiryMode:award.expiryMode,awardId:award.awardId,points,scope:sessionId?data.session!.title:'Independent coursework',audience:restricted?selected.map(number=>joined.find(student=>student.studentId===number)?.name??number).join(', '):'All joined students'});
+        const award=await createAward({sessionId:sessionId||null,points,reason:reason||(sessionId?'Class participation':'Independent coursework'),expiresSeconds:expiryMode==='timed'?Number(expires):300,expiryMode,...(restricted?{recipientIdNumbers:selected}:{})});
+        setResult({url:(data.pilotOrigin??location.origin)+award.urlPath,expiresAt:award.expiresAt,expiryMode:award.expiryMode,awardId:award.awardId,points,scope:sessionId?data.session!.title:'Independent coursework',audience:restricted?selected.map(number=>joined.find(student=>student.idNumber===number)?.name??number).join(', '):'All joined students'});
       }catch(value){setError(value instanceof Error?value.message:'Could not create the points QR. Please try again.');}
     });
   }
@@ -54,7 +54,7 @@ export default function PointsAward({data,initialPoints}:{data:DashboardData;ini
     setError('');
     startTransition(async()=>{
       try{
-        const award=await awardPointsDirectly({studentNumbers:selected,points,reason:reason||'Coursework submitted outside class',sessionId:sessionId||null,requestId});
+        const award=await awardPointsDirectly({idNumbers:selected,points,reason:reason||'Coursework submitted outside class',sessionId:sessionId||null,requestId});
         setDirectResult({count:award.created,points});
       }catch(value){setError(value instanceof Error?value.message:'Could not award these points. Please try again.');}
     });
@@ -92,5 +92,5 @@ export default function PointsAward({data,initialPoints}:{data:DashboardData;ini
 }
 
 function StudentPicker({students,total,selected,search,direct,setSearch,setSelected}:{students:DashboardData['roster'];total:number;selected:string[];search:string;direct:boolean;setSearch:(value:string)=>void;setSelected:React.Dispatch<React.SetStateAction<string[]>>}){
-  return <div className="award-recipients"><label className="field">Find students<input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Name or student number"/></label><p aria-live="polite">{selected.length} selected · {total} eligible students</p><div className="award-student-list">{students.map(student=><label key={student.studentId}><input type="checkbox" checked={selected.includes(student.studentId)} onChange={event=>setSelected(current=>event.target.checked?[...current,student.studentId]:current.filter(number=>number!==student.studentId))}/><span>{student.name}<small>{student.studentId}</small></span></label>)}{!students.length&&<p>{total?'No students match your search.':direct?'Import students before awarding points.':'Students must join the course before they can receive points.'}</p>}</div>{selected.length>0&&<button type="button" className="link" onClick={()=>setSelected([])}>Clear selection</button>}<p>{direct?'The selected students receive the points as soon as you confirm. The audit record names the awarding teacher.':'Only the selected student numbers can claim this QR. Pilot identities are not verified.'}</p></div>;
+  return <div className="award-recipients"><label className="field">Find students<input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Name or ID number"/></label><p aria-live="polite">{selected.length} selected · {total} eligible students</p><div className="award-student-list">{students.map(student=><label key={student.idNumber}><input type="checkbox" checked={selected.includes(student.idNumber)} onChange={event=>setSelected(current=>event.target.checked?[...current,student.idNumber]:current.filter(number=>number!==student.idNumber))}/><span>{student.name}<small>{student.idNumber}</small></span></label>)}{!students.length&&<p>{total?'No students match your search.':direct?'Import students before awarding points.':'Students must join the course before they can receive points.'}</p>}</div>{selected.length>0&&<button type="button" className="link" onClick={()=>setSelected([])}>Clear selection</button>}<p>{direct?'The selected students receive the points as soon as you confirm. The audit record names the awarding teacher.':'Only the selected ID numbers can claim this QR. Pilot identities are not verified.'}</p></div>;
 }

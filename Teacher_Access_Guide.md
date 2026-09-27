@@ -10,7 +10,7 @@ The implementation adds a Teachers page for administrators, persistent teacher a
 4. To add a normal teacher, enter their name and email, optionally choose courses you own, and copy their generated code. They are added to the additional-teacher pool. They do not gain administrator rights.
 5. Reset a managed account's code or disable it on the Teachers page. Both invalidate existing sessions. Re-enabling does not reactivate old sessions.
 
-Read-only access includes teacher-visible personal information and downloads in **all active courses**, as requested. Share its code only with the intended reviewers. The public student-number pilot remains a separate anonymous flow: this feature does not fix all findings in the migration assessment or prevent an anonymous visitor using that existing flow after signing out.
+Read-only access includes teacher-visible personal information and downloads in **all active courses**, as requested. Share its code only with the intended reviewers. The public ID number pilot remains a separate anonymous flow: this feature does not fix all findings in the migration assessment or prevent an anonymous visitor using that existing flow after signing out.
 
 ## Configuration and deployment
 
