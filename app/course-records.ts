@@ -13,6 +13,20 @@ export async function loadSessionAttendance(courseId:string,sessionId:string):Pr
   return result.results;
 }
 
+export async function loadScheduledClassAttendance(courseId:string,classId:string):Promise<AttendanceRecord[]>{
+  const result=await getDatabase().prepare(`WITH ranked AS (
+    SELECT a.id,a.recorded_at AS time,s.student_number AS idNumber,s.name,COALESCE(lp.alias,'') AS nickname,cs.title AS session,COALESCE(cs.room,'') AS room,a.source,a.identity_verification AS verification,a.voided_at AS voidedAt,COALESCE(u.display_name,'') AS voidedBy,COALESCE(a.void_reason,'') AS voidReason,
+      ROW_NUMBER() OVER (PARTITION BY a.student_id ORDER BY a.recorded_at DESC,a.id DESC) AS attendanceRank
+    FROM attendance a
+    JOIN students s ON s.id=a.student_id
+    JOIN class_sessions cs ON cs.id=a.session_id
+    LEFT JOIN leaderboard_preferences lp ON lp.course_id=cs.course_id AND lp.student_id=a.student_id
+    LEFT JOIN users u ON u.id=a.voided_by
+    WHERE cs.course_id=? AND cs.title=? AND a.voided_at IS NULL
+  ) SELECT id,time,idNumber,name,nickname,session,room,source,verification,voidedAt,voidedBy,voidReason FROM ranked WHERE attendanceRank=1 ORDER BY name COLLATE NOCASE,idNumber`).bind(courseId,classId).all<AttendanceRecord>();
+  return result.results;
+}
+
 export async function loadCourseRecords(courseId:string):Promise<CourseRecords>{
   const db=getDatabase();
   const [enrolments,events,league,attendance,checkedIn,sessions]=await Promise.all([

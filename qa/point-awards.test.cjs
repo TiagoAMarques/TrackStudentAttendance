@@ -197,6 +197,12 @@ async function main(){
   assert.deepEqual(await actions.importClassAttendance('course','scheduled-csv',attendanceRows,randomUUID()),{imported:0,skipped:2,classId:'T-CSV',sessionCreated:false});
   await assert.rejects(()=>actions.importClassAttendance('course','scheduled-csv',[{classId:'WRONG',idNumber:'fc1'}],randomUUID()),/Class ID must be T-CSV/);
   await assert.rejects(()=>actions.importClassAttendance('course','scheduled-csv',[{classId:'T-CSV',idNumber:'missing'}],randomUUID()),/Not enrolled/);
+  // Resetting and reopening one timetable class creates multiple sessions. Its detail and export aggregate distinct students across all of them.
+  sqlite.exec("INSERT INTO class_sessions(id,course_id,title,room,attendance_token_digest,attendance_expires_at,opened_by,opened_at,closed_at) VALUES ('reopen-old','course','T-REOPEN','Lab','reopen-old-token',1,'teacher',10,20),('reopen-new','course','T-REOPEN','Lab','reopen-new-token',1,'teacher',30,40); INSERT INTO scheduled_classes(id,course_id,class_id,class_date,week,class_time,room,teacher,comments,imported_by,created_at,session_id) VALUES ('scheduled-reopen','course','T-REOPEN','2030-09-17',1,'10:00','Lab','Teacher','','teacher',1,'reopen-new'); INSERT INTO attendance(id,session_id,student_id,recorded_by,source,identity_verification,recorded_at) VALUES ('reopen-a','reopen-old','s1','teacher','qr','pilot_student_number',11),('reopen-b','reopen-old','s2','teacher','qr','pilot_student_number',12),('reopen-c','reopen-new','s3','teacher','qr','pilot_student_number',31)");
+  const reopened=await actions.getScheduledClassAttendance('course','scheduled-reopen');
+  assert.equal(reopened.rows.length,3);assert.deepEqual(new Set(reopened.rows.map(row=>row.idNumber)),new Set(['fc1','fc2','fc3']));
+  const reopenedCsv=await exportRoute.GET(new Request('https://example.test?scheduledClassId=scheduled-reopen'),{params:Promise.resolve({courseId:'course',kind:'attendance'})});
+  assert.equal((await reopenedCsv.text()).trim().split('\r\n').length,4);
   user=null;await assert.rejects(()=>actions.createAward(input),/sign in/);
   user={userId:'outsider'};await assert.rejects(()=>actions.createAward(input),/cannot create/);
   console.log('PASS: migration preservation; recipients and both auth paths; ID number normalization and ambiguity; onboarding/nicknames; fixed, class and course lifetimes; CSV attendance recovery; revocation; duplicate, enrolment and permission checks; reporting, backup, reversal and class totals.');

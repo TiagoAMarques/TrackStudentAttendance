@@ -1,6 +1,6 @@
 import { getDatabase } from '#database';
 import { getChatGPTUser } from '../../../chatgpt-auth';
-import { loadCourseBackup, loadCourseRecords, loadSessionAttendance } from '../../../course-records';
+import { loadCourseBackup, loadCourseRecords, loadScheduledClassAttendance } from '../../../course-records';
 
 export async function GET(request:Request,{params}:{params:Promise<{courseId:string;kind:string}>}){
   const user=await getChatGPTUser(),{courseId,kind}=await params;
@@ -12,7 +12,7 @@ export async function GET(request:Request,{params}:{params:Promise<{courseId:str
   if(kind==='attendance'&&scheduledClassId){
     const scheduled=await getDatabase().prepare(`SELECT class_id AS classId,session_id AS sessionId FROM scheduled_classes WHERE id=? AND course_id=?`).bind(scheduledClassId,courseId).first<{classId:string;sessionId:string|null}>();
     if(!scheduled)return new Response('Semester class unavailable.',{status:404});
-    const rows=scheduled.sessionId?await loadSessionAttendance(courseId,scheduled.sessionId):[];
+    const rows=await loadScheduledClassAttendance(courseId,scheduled.classId);
     return csvResponse(allowed.code,`attendance-${safeFilename(scheduled.classId)}`,['Date and time','ID number','Student','Animal nickname','Session','Room','Source','Verification'],rows.map(row=>[date(row.time),row.idNumber,row.name,row.nickname,row.session,row.room,row.source,row.verification]));
   }
   const records=await loadCourseRecords(courseId);

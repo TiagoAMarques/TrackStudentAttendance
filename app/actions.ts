@@ -12,7 +12,7 @@ import { digestToken, ensureTeacher, id, initials, now } from './data';
 import { rosterCourseCode, validateRoster, type RosterStudent } from './roster-import';
 import { ANIMAL_NICKNAMES } from './animal-nicknames';
 import { getPilotTeacherDirectory } from './pilot-auth';
-import { loadCourseRecords,loadSessionAttendance } from './course-records';
+import { loadCourseRecords,loadScheduledClassAttendance } from './course-records';
 import { validateTimetable, type TimetableRow, type ScheduledClass } from './timetable';
 import { validateAttendanceImport, type AttendanceImportRow } from './attendance-import';
 
@@ -34,7 +34,7 @@ export async function getScheduledClassAttendance(courseId:string,scheduledId:st
  const {db}=await timetableContext(courseId,true);
  const scheduled=await db.prepare(`SELECT class_id AS classId,session_id AS sessionId FROM scheduled_classes WHERE id=? AND course_id=?`).bind(scheduledId,courseId).first<{classId:string;sessionId:string|null}>();
  if(!scheduled)throw Error('This semester class is unavailable.');
- return {classId:scheduled.classId,sessionId:scheduled.sessionId,rows:scheduled.sessionId?await loadSessionAttendance(courseId,scheduled.sessionId):[]};
+ return {classId:scheduled.classId,sessionId:scheduled.sessionId,rows:await loadScheduledClassAttendance(courseId,scheduled.classId)};
 }
 
 export async function importTimetable(courseId:string,input:TimetableRow[]){
