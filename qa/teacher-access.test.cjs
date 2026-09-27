@@ -8,10 +8,10 @@ async function teacherChecks(){
  process.env.PILOT_TEACHERS_JSON=JSON.stringify([{id:'teacher',displayName:'Teacher',email:'teacher@example.test',code:'synthetic-admin-code'},{id:'second',displayName:'Second',email:'second@example.test',code:'synthetic-second-code'}]);
  process.env.PILOT_TEACHER_SECRET='synthetic-local-test-secret-not-a-real-credential';
  const jar=new Map(),cookieApi={get:key=>jar.has(key)?{value:jar.get(key)}:undefined,set:(key,value)=>jar.set(key,value),delete:key=>jar.delete(key)};
- const store=load('app/teacher-store.ts',{'cloudflare:workers':{env:{DB:db}}});
- const auth=load('app/pilot-auth.ts',{'cloudflare:workers':{env:{DB:db}},'next/headers':{cookies:async()=>cookieApi},'./teacher-store':store,'./request-security':security});
- const identities=load('app/student-identity-actions.ts',{'cloudflare:workers':{env:{DB:db}},'next/cache':{revalidatePath(){}},'./pilot-auth':auth});
- const management=load('app/teacher-actions.ts',{'cloudflare:workers':{env:{DB:db}},'next/cache':{revalidatePath(){}},'./pilot-auth':auth,'./teacher-store':store});
+ const store=load('app/teacher-store.ts',{'#database':{getDatabase:()=>db}});
+ const auth=load('app/pilot-auth.ts',{'#database':{getDatabase:()=>db},'next/headers':{cookies:async()=>cookieApi},'./teacher-store':store,'./request-security':security});
+ const identities=load('app/student-identity-actions.ts',{'#database':{getDatabase:()=>db},'next/cache':{revalidatePath(){}},'./pilot-auth':auth});
+ const management=load('app/teacher-actions.ts',{'#database':{getDatabase:()=>db},'next/cache':{revalidatePath(){}},'./pilot-auth':auth,'./teacher-store':store});
  await assert.rejects(()=>auth.getPilotTeacherDirectory(),/Sign in/);
  await assert.rejects(()=>management.getTeacherAccounts(),/administrator/);
  assert.equal((await auth.pilotLogin('synthetic-admin-code')).ok,true);
@@ -57,11 +57,11 @@ async function teacherChecks(){
  await auth.pilotLogin(reset.code);
  user={userId:viewer.id,email:viewer.email,displayName:'Test Teacher',readOnly:true,teacherAccess:true};
  const before=snapshot();
- const reads=load('app/data.ts',{'cloudflare:workers':{env:{DB:db}},'next/headers':{cookies:async()=>cookieApi},'./pilot-auth':auth});
+ const reads=load('app/data.ts',{'#database':{getDatabase:()=>db},'next/headers':{cookies:async()=>cookieApi},'./pilot-auth':auth});
  assert.equal((await reads.ensureTeacher(user)).id,'course');
  const dashboard=await reads.getDashboard(user);assert.equal(dashboard.readOnly,true);assert.equal(dashboard.courses.length,2);
  await actions.getCourseRecords();await actions.getLiveClassroom('session');await actions.getScheduledClasses('course');await actions.switchCourse('other');
- const exporter=load('app/export/[courseId]/[kind]/route.ts',{'cloudflare:workers':{env:{DB:db}},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
+ const exporter=load('app/export/[courseId]/[kind]/route.ts',{'#database':{getDatabase:()=>db},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
  assert.equal((await exporter.GET(new Request('http://local'),{params:Promise.resolve({courseId:'other',kind:'enrolments'})})).status,200);
  const mutations=[()=>actions.createCourse({code:'BAD',name:'Bad course',teacherIds:[]}),()=>actions.importTimetable('course',[]),()=>actions.startScheduledClass('course','schedule',30),()=>actions.importClassAttendance('course','schedule',[{classId:'T01',idNumber:'fc1'}],randomUUID()),()=>actions.importRoster('course','courseid_TEST_participants.csv',[]),()=>actions.openSession({title:'bad',room:'',attendanceMinutes:30}),()=>actions.closeSession('session'),()=>actions.rotateAttendanceToken('session'),()=>actions.generateOnboardingQr(),()=>actions.createAward(input),()=>actions.closePointAward('legacy'),()=>actions.addManualRecord({kind:'points',sessionId:'session',idNumber:'fc1',points:5,reason:'bad'}),()=>actions.voidAttendance('absent','bad'),()=>actions.reversePointTransaction('legacy-claim','bad')];
  for(const mutate of mutations)await assert.rejects(mutate);

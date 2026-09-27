@@ -26,7 +26,7 @@ async function assess(){
  await actions.importRoster('course','courseid_TEST_participants.csv',[{studentId:'fc4',name:'Changed from different course',email:'new@example.test',groups:''}]);
  assert.equal(sqlite.prepare("SELECT s.name FROM enrolments e JOIN students s ON s.id=e.student_id WHERE e.course_id='other' AND s.id='s4'").get().name,'Changed from different course');note('A06','An authorised import in one course changes the shared identity shown in another course.');
  await actions.importRoster('course','courseid_TEST_participants.csv',[{studentId:'fc1',name:'=1+1',email:'one@example.test',groups:''}]);
- const route=load('app/export/[courseId]/[kind]/route.ts',{'cloudflare:workers':{env:{DB:db}},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
+ const route=load('app/export/[courseId]/[kind]/route.ts',{'#database':{getDatabase:()=>db},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
  response=await route.GET(new Request('https://example.test'),{params:Promise.resolve({courseId:'course',kind:'enrolments'})});
  assert.ok((await response.text()).includes('"=1+1"'));note('A07','CSV output contains an unneutralised formula-leading cell.');
  await actions.importRoster('course','courseid_TEST_participants.csv',[{studentId:'FC1',name:'Case variant',email:'case@example.test',groups:''}]);

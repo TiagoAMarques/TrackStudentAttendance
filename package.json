@@ -10,9 +10,17 @@
     "dev:pilot": "vinext dev --host 0.0.0.0",
     "build": "vinext build",
     "start": "vinext start",
+    "dev:university": "next dev -H 127.0.0.1",
+    "build:university": "next build",
+    "release:university": "next build && node scripts/prepare-university-release.mjs",
+    "start:university": "node .next/standalone/server.js",
+    "db:university:migrate": "node scripts/migrate-university.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "db:local:init": "wrangler d1 execute DB --local --file ./drizzle/0000_initial.sql --persist-to ./.wrangler/state --config ./wrangler.local.jsonc"
+  },
+  "imports": {
+    "#database": "./db/node-database.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

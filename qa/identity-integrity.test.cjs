@@ -48,7 +48,7 @@ async function integrityChecks(){
  // Untrusted spreadsheet cells are neutralised, while numeric points remain numeric.
  await actions.importRoster('course','courseid_TEST_participants.csv',[{idNumber:'NEWID',name:'=1+1',email:'formula@example.test',groups:'@SUM(A1)'}]);
  assert.equal(sqlite.prepare("SELECT student_number FROM students WHERE email='formula@example.test'").get().student_number,'newid');
- const exporter=load('app/export/[courseId]/[kind]/route.ts',{'cloudflare:workers':{env:{DB:db}},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
+ const exporter=load('app/export/[courseId]/[kind]/route.ts',{'#database':{getDatabase:()=>db},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
  const csv=await exporter.GET(new Request('https://example.test'),{params:Promise.resolve({courseId:'course',kind:'enrolments'})});
  assert.equal(csv.headers.get('cache-control'),'private, no-store');const content=await csv.text();assert.ok(content.includes("\"'=1+1\""));assert.ok(content.includes("\"'@SUM(A1)\""));
  // Exhaust the base nickname list, then join with the next numbered variant.
@@ -67,7 +67,7 @@ async function integrityChecks(){
  user.identityProvider='sites';assert.equal((await actions.redeem('attendance',token)).ok,true);
  assert.equal(sqlite.prepare("SELECT identity_verification FROM attendance WHERE student_id='s2'").get().identity_verification,'sites');
  // A fresh platform user cannot create a teacher role by opening the dashboard.
- const data=load('app/data.ts',{'cloudflare:workers':{env:{DB:db}},'next/headers':{cookies:async()=>({get(){}})}});
+ const data=load('app/data.ts',{'#database':{getDatabase:()=>db},'next/headers':{cookies:async()=>({get(){}})}});
  before=dbState();await assert.rejects(()=>data.ensureTeacher({userId:'stranger',email:'stranger@example.test',displayName:'Stranger'}),/not been granted/);assert.equal(dbState(),before);
  const identity=load('app/chatgpt-auth.ts',{'next/headers':{headers:async()=>new Map([['oai-authenticated-user-id','forged'],['oai-authenticated-user-email','forged@example.test']])},'next/navigation':{redirect(){throw Error('redirect')}}});
  process.env.PILOT_MODE='false';delete process.env.AUTH_PROVIDER;assert.equal(await identity.getChatGPTUser(),null);process.env.PILOT_MODE='true';

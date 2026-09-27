@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:workers';
+import { getDatabase } from '#database';
 import { cookies } from 'next/headers';
 import type { ChatGPTUser } from './chatgpt-auth';
 
@@ -29,7 +29,7 @@ export async function digestToken(token: string) {
 }
 
 export async function ensureTeacher(user: ChatGPTUser) {
-  const db = env.DB;
+  const db = getDatabase();
   if(!user.teacherAccess&&!await db.prepare("SELECT 1 FROM course_teachers WHERE teacher_id=? AND role IN ('owner','editor') LIMIT 1").bind(user.userId).first())throw Error('Teacher access has not been granted to this account.');
   if(user.readOnly){
     const selectedId=(await cookies()).get('pulse_active_course')?.value;
@@ -53,7 +53,7 @@ export async function ensureTeacher(user: ChatGPTUser) {
 }
 
 export async function getDashboard(user: ChatGPTUser): Promise<DashboardData> {
-  const db = env.DB;
+  const db = getDatabase();
   const course = await ensureTeacher(user);
   const courses = await db.prepare(`SELECT c.id,c.code,c.name,(SELECT COUNT(*) FROM enrolments e WHERE e.course_id=c.id AND e.active=1) AS registered,(SELECT COUNT(*) FROM enrolments e WHERE e.course_id=c.id AND e.active=1 AND e.checked_in_at IS NOT NULL) AS joined FROM courses c WHERE (?=1 OR EXISTS (SELECT 1 FROM course_teachers ct WHERE ct.course_id=c.id AND ct.teacher_id=?)) AND c.archived_at IS NULL ORDER BY c.created_at,c.name`).bind(user.readOnly?1:0,user.userId).all<{id:string;code:string;name:string;registered:number;joined:number}>();
   const availableTeachers = process.env.PILOT_MODE==='true' ? await (await import('./pilot-auth')).getPilotTeacherDirectory() : [{id:user.userId,displayName:user.displayName,email:user.email}];

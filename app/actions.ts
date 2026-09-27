@@ -1,6 +1,6 @@
 'use server';
 
-import { env } from 'cloudflare:workers';
+import { getDatabase } from '#database';
 import { studentAttemptAllowed,validRedemption } from './request-security';
 import { findPilotStudent } from './id-number';
 import { redemptionFailure, diagnoseRedemptionFailure } from './redemption-errors';
@@ -19,9 +19,9 @@ import { validateAttendanceImport, type AttendanceImportRow } from './attendance
 async function timetableContext(courseId:string,read=false){
  const user=await getChatGPTUser();
  if(!user||!(await (read?canView:canEdit)(courseId,user.userId)))throw Error('You cannot manage this course.');
- const course=await env.DB.prepare('SELECT id,code FROM courses WHERE id=? AND archived_at IS NULL').bind(courseId).first<{id:string;code:string}>();
+ const course=await getDatabase().prepare('SELECT id,code FROM courses WHERE id=? AND archived_at IS NULL').bind(courseId).first<{id:string;code:string}>();
  if(!course)throw Error('Course unavailable.');
- return {user,course,db:env.DB};
+ return {user,course,db:getDatabase()};
 }
 
 export async function getScheduledClasses(courseId:string):Promise<ScheduledClass[]>{
@@ -109,19 +109,19 @@ async function context() {
   const user = await getChatGPTUser();
   if (!user) throw new Error('You must sign in first.');
   const course = await ensureTeacher(user);
-  return { user, course, db: env.DB };
+  return { user, course, db: getDatabase() };
 }
 
 async function canView(courseId:string,userId:string){
   const user=await getChatGPTUser();
   if(!user||user.userId!==userId)return false;
-  if(user.readOnly)return !!await env.DB.prepare('SELECT id FROM courses WHERE id=? AND archived_at IS NULL').bind(courseId).first();
+  if(user.readOnly)return !!await getDatabase().prepare('SELECT id FROM courses WHERE id=? AND archived_at IS NULL').bind(courseId).first();
   return canEdit(courseId,userId);
 }
 async function canEdit(courseId: string, userId: string) {
   const user=await getChatGPTUser();
   if(!user||user.userId!==userId||user.readOnly)return false;
-  return !!(await env.DB.prepare(`SELECT 1 AS ok FROM course_teachers ct JOIN courses c ON c.id=ct.course_id WHERE ct.course_id=? AND ct.teacher_id=? AND ct.role IN ('owner','editor') AND c.archived_at IS NULL`).bind(courseId,userId).first());
+  return !!(await getDatabase().prepare(`SELECT 1 AS ok FROM course_teachers ct JOIN courses c ON c.id=ct.course_id WHERE ct.course_id=? AND ct.teacher_id=? AND ct.role IN ('owner','editor') AND c.archived_at IS NULL`).bind(courseId,userId).first());
 }
 
 export async function getLiveClassroom(sessionId:string){
@@ -200,7 +200,7 @@ export async function createCourse(input:{code:string;name:string;teacherIds:str
   if(!user)throw new Error('You must sign in first.');
   if(user.readOnly)throw Error('Read-only test access cannot change data.');
   await ensureTeacher(user);
-  const db=env.DB,code=input.code.trim().toUpperCase().replace(/\s+/g,'').slice(0,20),name=input.name.trim().slice(0,100);
+  const db=getDatabase(),code=input.code.trim().toUpperCase().replace(/\s+/g,'').slice(0,20),name=input.name.trim().slice(0,100);
   if(code.length<2)throw new Error('Enter a short course code, such as BIO204.');
   if(name.length<3)throw new Error('Enter the course name.');
   const duplicate=await db.prepare(`SELECT 1 AS ok FROM courses c JOIN course_teachers ct ON ct.course_id=c.id WHERE ct.teacher_id=? AND lower(c.code)=lower(?) AND c.archived_at IS NULL`).bind(user.userId,code).first();
@@ -335,7 +335,7 @@ export async function redeem(kind: 'attendance'|'points', token: string) {
   if (!user) return redemptionFailure(kind,'SIGN-IN','Sign in to continue, then return to this QR.');
   if(user.readOnly)return redemptionFailure(kind,'READ-ONLY','Read-only test access cannot change data.');
   if(!validRedemption(kind,token)||!user.identityProvider||!user.identitySubject)return redemptionFailure(kind,'SIGN-IN','Verified student sign-in is required.');
-  const db=env.DB;
+  const db=getDatabase();
   const student=await db.prepare('SELECT s.id FROM student_identity_links l JOIN students s ON s.id=l.student_id WHERE l.provider=? AND l.subject=?').bind(user.identityProvider,user.identitySubject).first<{id:string}>();
   if(!student)return redemptionFailure(kind,'ACCOUNT-NOT-LINKED','Your signed-in identity has not been linked to a student record. Give your teacher this sign-in reference after verifying your identity: '+user.identitySubject);
   await db.prepare('INSERT INTO users (id,email,display_name,created_at) VALUES (?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(user.userId,user.email,user.displayName,now()).run();
@@ -363,7 +363,7 @@ export async function redeemPilot(kind: 'attendance'|'points'|'onboarding', toke
   if(!validRedemption(kind,token)||typeof idNumber!=='string'||idNumber.length>100)return redemptionFailure(kind,'INVALID-INPUT','Enter a valid ID number and QR.');
   if((await getChatGPTUser())?.readOnly)return redemptionFailure(kind,'READ-ONLY','Read-only test access cannot change data.');
   if (process.env.PILOT_MODE !== 'true'||process.env.PILOT_ALLOW_UNVERIFIED_STUDENTS!=='true') return redemptionFailure(kind,'PILOT-DISABLED','Pilot access is unavailable. Ask your teacher which sign-in method to use.');
-  const db = env.DB;
+  const db = getDatabase();
   const number = idNumber.trim();
   if (!number) return redemptionFailure(kind,'NUMBER-REQUIRED','Enter your ID number, such as 12345 or fc12345.');
   if (!(await studentAttemptAllowed(number,token))) return redemptionFailure(kind,'TOO-MANY-ATTEMPTS','Too many incorrect ID number attempts. Wait ten minutes before trying again.');
@@ -400,7 +400,7 @@ export async function choosePilotNickname(kind:'attendance'|'points'|'onboarding
  if(!validRedemption(kind,token)||typeof idNumber!=='string'||idNumber.length>100)return redemptionFailure(kind,'INVALID-INPUT','Enter a valid ID number and QR.');
  if(!await studentAttemptAllowed(idNumber,token))return redemptionFailure(kind,'TOO-MANY-ATTEMPTS','Too many attempts. Wait ten minutes and try again.');
  const canonical=canonicalNickname(nickname);if(!canonical)return redemptionFailure(kind,'NICKNAME-REQUIRED','Choose an animal nickname from the list.');
- const db=env.DB,matched=await findPilotStudent(db,idNumber),digest=await digestToken(token),time=now();
+ const db=getDatabase(),matched=await findPilotStudent(db,idNumber),digest=await digestToken(token),time=now();
  if(!matched)return redemptionFailure(kind,'NUMBER-NOT-FOUND','The ID number could not be uniquely matched.');
  const eligible=kind==='points'?`SELECT eligible.courseId FROM (${eligiblePointAward}) eligible`
  :kind==='onboarding'?`SELECT c.id AS courseId FROM courses c JOIN enrolments e ON e.course_id=c.id WHERE e.student_id=? AND e.active=1 AND ? IN (c.onboarding_token_digest,(SELECT token_digest FROM course_onboarding_qrs WHERE course_id=c.id)) AND c.archived_at IS NULL`
@@ -419,7 +419,7 @@ export async function choosePilotNickname(kind:'attendance'|'points'|'onboarding
 }
 
 async function pilotNicknameState(studentId:string,courseId:string){
-  const db=env.DB,current=await db.prepare(`SELECT alias FROM leaderboard_preferences WHERE course_id=? AND student_id=? AND visibility!='private'`).bind(courseId,studentId).first<{alias:string|null}>(),used=await db.prepare(`SELECT alias FROM leaderboard_preferences WHERE course_id=? AND alias IS NOT NULL`).bind(courseId).all<{alias:string}>(),taken=new Set(used.results.map(row=>row.alias.toLocaleLowerCase('pt')));
+  const db=getDatabase(),current=await db.prepare(`SELECT alias FROM leaderboard_preferences WHERE course_id=? AND student_id=? AND visibility!='private'`).bind(courseId,studentId).first<{alias:string|null}>(),used=await db.prepare(`SELECT alias FROM leaderboard_preferences WHERE course_id=? AND alias IS NOT NULL`).bind(courseId).all<{alias:string}>(),taken=new Set(used.results.map(row=>row.alias.toLocaleLowerCase('pt')));
   return {nickname:current?.alias??null,availableNicknames:nicknameOptions(taken)};
 }
 

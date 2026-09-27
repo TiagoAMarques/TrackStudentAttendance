@@ -1,7 +1,7 @@
 'use server';
 import { cookies } from 'next/headers';
 import { consumeAttempt, requestKey } from './request-security';
-import { env } from 'cloudflare:workers';
+import { getDatabase } from '#database';
 import { codeDigest,configuredTeachers,managedTeachers,publicTeacher,type Teacher } from './teacher-store';
 export type PilotTeacher=Teacher;
 const COOKIE='pulse_pilot_teacher',encoder=new TextEncoder();
@@ -26,7 +26,7 @@ export async function pilotLogin(code:string){
  if(process.env.PILOT_MODE!=='true'||typeof code!=='string'||code.length>256)return {ok:false,message:'Incorrect teacher access code.'};
  if(!await consumeAttempt(await requestKey('teacher-login'),30,600))return {ok:false,message:'Too many sign-in attempts. Wait ten minutes and try again.'};
  const clean=code.trim();let teacher:Teacher|undefined=configuredTeachers().find(t=>timingSafeEqual(clean,t.code));let version:string|undefined;
- if(!teacher){const match=await env.DB.prepare('SELECT id,display_name AS displayName,email,role,session_version AS sessionVersion FROM teacher_accounts WHERE code_digest=? AND disabled_at IS NULL').bind(await codeDigest(clean)).first<Teacher&{sessionVersion:number}>();if(match){teacher=match;version=String(match.sessionVersion)}}
+ if(!teacher){const match=await getDatabase().prepare('SELECT id,display_name AS displayName,email,role,session_version AS sessionVersion FROM teacher_accounts WHERE code_digest=? AND disabled_at IS NULL').bind(await codeDigest(clean)).first<Teacher&{sessionVersion:number}>();if(match){teacher=match;version=String(match.sessionVersion)}}
  if(!teacher)return {ok:false,message:'Incorrect teacher access code.'};
  const expires=String(Date.now()+12*60*60*1000),payload=[teacher.id,expires,...(version?[version]:[])].join('.');
  (await cookies()).set(COOKIE,`${payload}.${await signature(payload)}`,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',path:'/',maxAge:12*60*60});

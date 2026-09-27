@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:workers';
+import { getDatabase } from '#database';
 
 export type EventRecord={nickname:string;id:string;time:number;eventType:string;idNumber:string;name:string;session:string;details:string;source:string;actor:string;points:number|null;reversible:number;qrAwardId?:string;qrOpen?:number};
 export type LeagueRecord={nickname:string;idNumber:string;name:string;email:string;points:number};
@@ -9,12 +9,12 @@ export type EnrolmentRecord={nickname:string;idNumber:string;name:string;email:s
 export type CourseRecords={events:EventRecord[];league:LeagueRecord[];attendance:AttendanceRecord[];enrolments:EnrolmentRecord[];checkedIn:CheckedInRecord[];sessions:SessionChoice[]};
 
 export async function loadSessionAttendance(courseId:string,sessionId:string):Promise<AttendanceRecord[]>{
-  const result=await env.DB.prepare(`SELECT a.id,a.recorded_at AS time,s.student_number AS idNumber,s.name,COALESCE(lp.alias,'') AS nickname,cs.title AS session,COALESCE(cs.room,'') AS room,a.source,a.identity_verification AS verification,a.voided_at AS voidedAt,COALESCE(u.display_name,'') AS voidedBy,COALESCE(a.void_reason,'') AS voidReason FROM attendance a JOIN students s ON s.id=a.student_id JOIN class_sessions cs ON cs.id=a.session_id LEFT JOIN leaderboard_preferences lp ON lp.course_id=cs.course_id AND lp.student_id=a.student_id LEFT JOIN users u ON u.id=a.voided_by WHERE cs.course_id=? AND cs.id=? AND a.voided_at IS NULL ORDER BY s.name COLLATE NOCASE,s.student_number`).bind(courseId,sessionId).all<AttendanceRecord>();
+  const result=await getDatabase().prepare(`SELECT a.id,a.recorded_at AS time,s.student_number AS idNumber,s.name,COALESCE(lp.alias,'') AS nickname,cs.title AS session,COALESCE(cs.room,'') AS room,a.source,a.identity_verification AS verification,a.voided_at AS voidedAt,COALESCE(u.display_name,'') AS voidedBy,COALESCE(a.void_reason,'') AS voidReason FROM attendance a JOIN students s ON s.id=a.student_id JOIN class_sessions cs ON cs.id=a.session_id LEFT JOIN leaderboard_preferences lp ON lp.course_id=cs.course_id AND lp.student_id=a.student_id LEFT JOIN users u ON u.id=a.voided_by WHERE cs.course_id=? AND cs.id=? AND a.voided_at IS NULL ORDER BY s.name COLLATE NOCASE,s.student_number`).bind(courseId,sessionId).all<AttendanceRecord>();
   return result.results;
 }
 
 export async function loadCourseRecords(courseId:string):Promise<CourseRecords>{
-  const db=env.DB;
+  const db=getDatabase();
   const [enrolments,events,league,attendance,checkedIn,sessions]=await Promise.all([
     db.prepare(`SELECT s.student_number AS idNumber,s.name,COALESCE(s.email,'') AS email,e.groups,e.checked_in_at AS checkedInAt FROM enrolments e JOIN students s ON s.id=e.student_id WHERE e.course_id=? AND e.active=1 ORDER BY s.name COLLATE NOCASE,s.student_number`).bind(courseId).all<EnrolmentRecord>(),
     loadEventRecords(courseId),
@@ -30,7 +30,7 @@ export async function loadCourseRecords(courseId:string):Promise<CourseRecords>{
 }
 
 async function loadEventRecords(courseId:string):Promise<EventRecord[]>{
-  const db=env.DB,queries=[
+  const db=getDatabase(),queries=[
     db.prepare(`SELECT cs.id||':opened' AS id,cs.opened_at AS time,'Session opened' AS eventType,'' AS idNumber,'' AS name,cs.title AS session,COALESCE(cs.room,'') AS details,'' AS source,u.display_name AS actor,NULL AS points,0 AS reversible FROM class_sessions cs JOIN users u ON u.id=cs.opened_by WHERE cs.course_id=?`).bind(courseId),
     db.prepare(`SELECT cs.id||':closed' AS id,cs.closed_at AS time,'Session closed' AS eventType,'' AS idNumber,'' AS name,cs.title AS session,COALESCE(cs.room,'') AS details,'' AS source,COALESCE((SELECT u.display_name FROM audit_log al JOIN users u ON u.id=al.actor_id WHERE al.entity_id=cs.id AND al.action='session.closed' ORDER BY al.created_at DESC LIMIT 1),'—') AS actor,NULL AS points,0 AS reversible FROM class_sessions cs WHERE cs.course_id=? AND cs.closed_at IS NOT NULL`).bind(courseId),
     db.prepare(`SELECT a.id,a.recorded_at AS time,'Attendance recorded' AS eventType,s.student_number AS idNumber,s.name,cs.title AS session,a.source AS details,a.source,u.display_name AS actor,NULL AS points,0 AS reversible FROM attendance a JOIN students s ON s.id=a.student_id JOIN class_sessions cs ON cs.id=a.session_id JOIN users u ON u.id=a.recorded_by WHERE cs.course_id=?`).bind(courseId),
@@ -43,7 +43,7 @@ async function loadEventRecords(courseId:string):Promise<EventRecord[]>{
 }
 
 export async function loadCourseBackup(courseId:string){
-  const db=env.DB,course=await db.prepare(`SELECT id,code,name,owner_id AS ownerId,created_at AS createdAt FROM courses WHERE id=?`).bind(courseId).first();
+  const db=getDatabase(),course=await db.prepare(`SELECT id,code,name,owner_id AS ownerId,created_at AS createdAt FROM courses WHERE id=?`).bind(courseId).first();
   const queries={scheduledClasses:`SELECT * FROM scheduled_classes WHERE course_id=?`,teachers:`SELECT ct.teacher_id AS teacherId,u.display_name AS name,u.email,ct.role,ct.joined_at AS joinedAt FROM course_teachers ct JOIN users u ON u.id=ct.teacher_id WHERE ct.course_id=?`,students:`SELECT s.id,s.student_number AS idNumber,s.name,s.email,e.active,e.checked_in_at AS checkedInAt FROM enrolments e JOIN students s ON s.id=e.student_id WHERE e.course_id=?`,sessions:`SELECT id,title,room,opened_by AS openedBy,opened_at AS openedAt,closed_at AS closedAt FROM class_sessions WHERE course_id=?`,attendance:`SELECT a.* FROM attendance a JOIN class_sessions cs ON cs.id=a.session_id WHERE cs.course_id=?`,awards:`SELECT pa.* FROM point_awards pa LEFT JOIN class_sessions cs ON cs.id=pa.session_id WHERE COALESCE(pa.course_id,cs.course_id)=?`,awardRecipients:`SELECT pr.* FROM point_award_recipients pr JOIN point_awards pa ON pa.id=pr.award_id LEFT JOIN class_sessions cs ON cs.id=pa.session_id WHERE COALESCE(pa.course_id,cs.course_id)=?`,points:`SELECT * FROM point_transactions WHERE course_id=?`,nicknames:`SELECT * FROM leaderboard_preferences WHERE course_id=?`,audit:`SELECT * FROM audit_log WHERE course_id=?`};
   const result:Record<string,unknown>={exportedAt:new Date().toISOString(),course};
   for(const [key,sql] of Object.entries(queries))result[key]=(await db.prepare(sql).bind(courseId).all()).results;

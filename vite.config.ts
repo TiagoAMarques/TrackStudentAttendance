@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
 import { defineConfig, loadEnv } from 'vite';
 import hostingConfig from './.openai/hosting.json';
+import { resolve } from 'node:path';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   '00000000-0000-4000-8000-000000000000';
@@ -47,6 +48,7 @@ export default defineConfig(async ({ mode }) => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    resolve: { alias: { '#database': resolve(__dirname, 'db/cloudflare-database.ts') } },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       host: pilotMode ? '0.0.0.0' : undefined,

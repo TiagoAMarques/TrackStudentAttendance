@@ -1,16 +1,16 @@
-import { env } from 'cloudflare:workers';
+import { getDatabase } from '#database';
 import { getChatGPTUser } from '../../../chatgpt-auth';
 import { loadCourseBackup, loadCourseRecords, loadSessionAttendance } from '../../../course-records';
 
 export async function GET(request:Request,{params}:{params:Promise<{courseId:string;kind:string}>}){
   const user=await getChatGPTUser(),{courseId,kind}=await params;
   if(!user)return new Response('Sign in required.',{status:401});
-  const allowed=await env.DB.prepare(`SELECT c.code FROM courses c WHERE (?=1 OR EXISTS (SELECT 1 FROM course_teachers ct WHERE ct.course_id=c.id AND ct.teacher_id=?)) AND c.id=? AND c.archived_at IS NULL`).bind(user.readOnly?1:0,user.userId,courseId).first<{code:string}>();
+  const allowed=await getDatabase().prepare(`SELECT c.code FROM courses c WHERE (?=1 OR EXISTS (SELECT 1 FROM course_teachers ct WHERE ct.course_id=c.id AND ct.teacher_id=?)) AND c.id=? AND c.archived_at IS NULL`).bind(user.readOnly?1:0,user.userId,courseId).first<{code:string}>();
   if(!allowed)return new Response('Course access denied.',{status:403});
   if(kind==='backup')return new Response(JSON.stringify(await loadCourseBackup(courseId),null,2),{headers:{'cache-control':'private, no-store','content-type':'application/json; charset=utf-8','content-disposition':`attachment; filename="${allowed.code}-backup.json"`}});
   const scheduledClassId=new URL(request.url).searchParams.get('scheduledClassId');
   if(kind==='attendance'&&scheduledClassId){
-    const scheduled=await env.DB.prepare(`SELECT class_id AS classId,session_id AS sessionId FROM scheduled_classes WHERE id=? AND course_id=?`).bind(scheduledClassId,courseId).first<{classId:string;sessionId:string|null}>();
+    const scheduled=await getDatabase().prepare(`SELECT class_id AS classId,session_id AS sessionId FROM scheduled_classes WHERE id=? AND course_id=?`).bind(scheduledClassId,courseId).first<{classId:string;sessionId:string|null}>();
     if(!scheduled)return new Response('Semester class unavailable.',{status:404});
     const rows=scheduled.sessionId?await loadSessionAttendance(courseId,scheduled.sessionId):[];
     return csvResponse(allowed.code,`attendance-${safeFilename(scheduled.classId)}`,['Date and time','ID number','Student','Animal nickname','Session','Room','Source','Verification'],rows.map(row=>[date(row.time),row.idNumber,row.name,row.nickname,row.session,row.room,row.source,row.verification]));

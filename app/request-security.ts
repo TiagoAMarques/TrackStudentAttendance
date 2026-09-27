@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:workers';
+import { getDatabase } from '#database';
 import { headers } from 'next/headers';
 
 // Trust only the provider-controlled client address. Forwarded headers supplied
@@ -10,7 +10,7 @@ export async function requestKey(scope:string){
 }
 export async function consumeAttempt(key:string,limit:number,seconds:number){
  const time=Math.floor(Date.now()/1000);
- const row=await env.DB.prepare(`INSERT INTO pilot_rate_limits(client_key,window_started_at,failed_attempts,blocked_until) VALUES (?,?,1,NULL)
+ const row=await getDatabase().prepare(`INSERT INTO pilot_rate_limits(client_key,window_started_at,failed_attempts,blocked_until) VALUES (?,?,1,NULL)
  ON CONFLICT(client_key) DO UPDATE SET
  failed_attempts=CASE WHEN window_started_at<=? THEN 1 ELSE failed_attempts+1 END,
  window_started_at=CASE WHEN window_started_at<=? THEN excluded.window_started_at ELSE window_started_at END,

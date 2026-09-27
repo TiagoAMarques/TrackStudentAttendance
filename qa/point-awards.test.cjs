@@ -33,10 +33,10 @@ const db={prepare(sql){let params=[];return {bind(...p){params=p;return this},as
 let user={userId:'teacher',email:'teacher@example.test',displayName:'Teacher'};
 function load(file,imports={}){const module={exports:{}};const js=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new Function('require','module','exports',js)(name=>{if(name in imports)return imports[name];throw Error('Unexpected import '+name)},module,module.exports);return module.exports;}
 const policy=load('app/point-award-policy.ts');
-const security=load('app/request-security.ts',{'cloudflare:workers':{env:{DB:db}},'next/headers':{headers:async()=>new Map()}});
-const records=load('app/course-records.ts',{'cloudflare:workers':{env:{DB:db}}});
+const security=load('app/request-security.ts',{'#database':{getDatabase:()=>db},'next/headers':{headers:async()=>new Map()}});
+const records=load('app/course-records.ts',{'#database':{getDatabase:()=>db}});
 const actions=load('app/actions.ts',{
- 'cloudflare:workers':{env:{DB:db}},'next/cache':{revalidatePath(){}},'next/headers':{headers:async()=>new Map(),cookies:async()=>({set(){}})},
+ '#database':{getDatabase:()=>db},'next/cache':{revalidatePath(){}},'next/headers':{headers:async()=>new Map(),cookies:async()=>({set(){}})},
  './request-security':security,
  './chatgpt-auth':{getChatGPTUser:async()=>user},'./point-award-policy':policy,'./id-number':load('app/id-number.ts'),'./redemption-errors':load('app/redemption-errors.ts'),
  './data':{ensureTeacher:async()=>({id:'course',code:'TEST',name:'Test course'}),id:randomUUID,now:()=>time,digestToken:async t=>createHash('sha256').update(t).digest('hex'),initials:()=>''},
@@ -123,7 +123,7 @@ async function main(){
   }
   assert.equal(nicknameRecords.enrolments.find(row=>row.idNumber==='fc5').nickname,'');
   assert.ok(nicknameRecords.events.filter(row=>!row.idNumber).every(row=>row.nickname===''));
-  const exportRoute=load('app/export/[courseId]/[kind]/route.ts',{'cloudflare:workers':{env:{DB:db}},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
+  const exportRoute=load('app/export/[courseId]/[kind]/route.ts',{'#database':{getDatabase:()=>db},'../../../chatgpt-auth':{getChatGPTUser:async()=>user},'../../../course-records':records});
   for(const kind of ['enrolments','league','events','attendance','checked-in']){
     const response=await exportRoute.GET(new Request('https://example.test'),{params:Promise.resolve({courseId:'course',kind})});
     assert.equal(response.status,200);
