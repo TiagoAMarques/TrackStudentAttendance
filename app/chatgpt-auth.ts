@@ -29,6 +29,10 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
     const teacher=await getPilotTeacherSession();
     return teacher ? { userId: teacher.id, displayName: teacher.displayName, email: teacher.email, fullName: teacher.displayName, teacherAccess:true, readOnly:teacher.role==='viewer', teacherAdmin:teacher.role==='admin' } : null;
   }
+  if(process.env.AUTH_PROVIDER==='oidc'){
+    const {getOidcSessionUser}=await import('./oidc-session');
+    return getOidcSessionUser();
+  }
   // Platform identity headers are accepted only on explicitly configured Sites hosting.
   if(process.env.AUTH_PROVIDER!=='sites')return null;
   const requestHeaders = await headers();
@@ -63,6 +67,7 @@ export async function requireChatGPTUser(
   if (user) return user;
 
   if (isPilotMode()) redirect(`/pilot/login?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`);
+  if(process.env.AUTH_PROVIDER==='oidc')redirect(`/api/auth/signin?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`);
 
   redirect(chatGPTSignInPath(returnTo));
 }
@@ -75,6 +80,12 @@ export function chatGPTSignInPath(returnTo: string): string {
 export function chatGPTSignOutPath(returnTo = '/'): string {
   const safeReturnTo = safeRelativeReturnPath(returnTo);
   return `${SIGN_OUT_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;
+}
+
+export function authenticationSignOutPath(returnTo='/'):string{
+  if(isPilotMode())return '/pilot/logout';
+  if(process.env.AUTH_PROVIDER==='oidc')return `/api/auth/logout?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
+  return chatGPTSignOutPath(returnTo);
 }
 
 function safeRelativeReturnPath(value: string): string {
@@ -96,7 +107,8 @@ function isReservedAuthPath(pathname: string): boolean {
   return (
     pathname === SIGN_IN_PATH ||
     pathname === SIGN_OUT_PATH ||
-    pathname === CALLBACK_PATH
+    pathname === CALLBACK_PATH ||
+    pathname.startsWith('/api/auth/')
   );
 }
 

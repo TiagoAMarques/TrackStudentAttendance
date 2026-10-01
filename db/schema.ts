@@ -35,3 +35,9 @@ export const studentIdentityLinks = sqliteTable('student_identity_links', {
  provider:text('provider').notNull(),subject:text('subject').notNull(),studentId:text('student_id').notNull().references(()=>students.id),
  linkedBy:text('linked_by').notNull(),linkedAt:integer('linked_at').notNull()
 },t=>[primaryKey({columns:[t.provider,t.subject]}),uniqueIndex('idx_identity_provider_student').on(t.provider,t.studentId)]);
+export const oidcAuthRequests=sqliteTable('oidc_auth_requests',{
+ stateHash:text('state_hash').primaryKey(),nonce:text('nonce').notNull(),codeVerifier:text('code_verifier').notNull(),returnTo:text('return_to').notNull(),createdAt:integer('created_at').notNull(),expiresAt:integer('expires_at').notNull()
+},t=>[index('idx_oidc_auth_requests_expiry').on(t.expiresAt)]);
+export const oidcSessions=sqliteTable('oidc_sessions',{
+ tokenHash:text('token_hash').primaryKey(),issuer:text('issuer').notNull(),subject:text('subject').notNull(),userId:text('user_id').notNull(),email:text('email').notNull(),displayName:text('display_name').notNull(),teacherAccess:integer('teacher_access',{mode:'boolean'}).notNull().default(false),createdAt:integer('created_at').notNull(),expiresAt:integer('expires_at').notNull()
+},t=>[index('idx_oidc_sessions_expiry').on(t.expiresAt),index('idx_oidc_sessions_identity').on(t.issuer,t.subject)]);

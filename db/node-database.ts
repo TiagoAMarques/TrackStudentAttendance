@@ -42,7 +42,8 @@ export function getDatabase(): D1Database {
   if (globalThis.pulseNodeDatabase) return globalThis.pulseNodeDatabase as unknown as D1Database;
   const configuredPath = process.env.PULSE_DATABASE_PATH?.trim();
   if (process.env.NODE_ENV === 'production' && !configuredPath) throw new Error('PULSE_DATABASE_PATH must be set for the university production server.');
-  const databasePath = resolve(configuredPath || '.data/pulse.sqlite');
+  // The production database is runtime state outside the release; it must never be traced into the standalone bundle.
+  const databasePath = resolve(/* turbopackIgnore: true */ configuredPath || '.data/pulse.sqlite');
   mkdirSync(dirname(databasePath), { recursive: true, mode: 0o750 });
   const connection = new DatabaseSync(databasePath);
   connection.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');

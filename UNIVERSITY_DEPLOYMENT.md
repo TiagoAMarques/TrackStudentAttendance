@@ -4,7 +4,7 @@ This deployment target runs on ordinary Node.js with a local SQLite database. It
 
 ## Current security boundary
 
-Use this release only in a staging environment with synthetic data until university OIDC is implemented and accepted. `PILOT_MODE=true` retains the access-code and unverified student pilot; it is not SSO and must not be used for real student data. `AUTH_PROVIDER=sites` is valid only on OpenAI Sites and must never be enabled on the university VM.
+Use the access-code pilot only in a staging environment with synthetic data. `PILOT_MODE=true` is not SSO and must not be used for real student data. `AUTH_PROVIDER=sites` is valid only on OpenAI Sites and must never be enabled on the university VM. The university release supports OIDC Authorization Code flow with PKCE, state and nonce validation, server-side login transactions, opaque database-backed sessions, and authoritative roster linking.
 
 ## Required configuration
 
@@ -20,6 +20,26 @@ PILOT_TEACHER_SECRET=<long random value>
 PILOT_TEACHERS_JSON=<staging accounts only>
 AUTH_PROVIDER=disabled
 ```
+
+For university OIDC, set `PILOT_MODE=false`, keep unverified students disabled, and replace the disabled provider with:
+
+```dotenv
+AUTH_PROVIDER=oidc
+PULSE_PUBLIC_ORIGIN=https://pulse.campus.ciencias.ulisboa.pt
+OIDC_ISSUER_URL=<issuer supplied by the University>
+OIDC_CLIENT_ID=<client ID>
+OIDC_CLIENT_SECRET=<secret supplied through a secure channel>
+OIDC_CLIENT_AUTH_METHOD=client_secret_basic
+OIDC_SCOPES=openid profile email
+OIDC_REDIRECT_URI=https://pulse.campus.ciencias.ulisboa.pt/api/auth/callback/oidc
+OIDC_POST_LOGOUT_REDIRECT_URI=https://pulse.campus.ciencias.ulisboa.pt/
+OIDC_STUDENT_ID_CLAIM=<authoritative institutional ID-number claim>
+OIDC_TEACHER_GROUP_CLAIM=<group or role claim; dotted paths supported>
+OIDC_TEACHER_GROUPS=<comma-separated groups granted teacher access>
+AUTH_SESSION_SECRET=<at least 32 random characters>
+```
+
+The redirect and post-logout URLs must exactly match the identity-provider registration. If no teacher groups are configured, OIDC users are students unless their stable generated user ID already has an explicit course-teacher assignment. The configured student ID claim is matched only against imported roster ID numbers; names and email addresses are never used to establish student ownership. Restart with `pm2 restart ecosystem.config.cjs --update-env` after configuration changes.
 
 The database must be on persistent local storage, not an NFS/SMB share. The service account needs write access to its directory. Back up the database using a SQLite-aware online backup or a coordinated stopped-service snapshot that includes WAL state.
 
@@ -55,6 +75,6 @@ The process listens only on `127.0.0.1:3000`. The reverse proxy should be the on
 - Check `GET /api/health`; HTTP 200 with `{"status":"ok"}` confirms both the application and database are ready.
 - Do not expose port 3000 or the SQLite file publicly.
 
-## Remaining production gate
+## Remaining production acceptance
 
-University OIDC/SAML integration requires the issuer/discovery URL, client registration, claims, role mapping, test accounts, and approved callback/logout URLs. Until that is implemented, forged-header rejection and student/teacher/admin authorization cannot receive production acceptance.
+Before real student data is used, validate discovery and token exchange against the university provider, the authoritative student-ID claim, teacher group mapping, test student/teacher accounts, logout, session expiry, proxy HTTPS headers, and rejected unauthorized access. Successful implementation does not replace the university's security and data-protection acceptance.
