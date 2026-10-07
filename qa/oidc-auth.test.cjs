@@ -13,11 +13,25 @@ assert.equal(config.safeReturnPath('//evil.example/'),'/');
 assert.equal(config.safeReturnPath('/api/auth/callback/oidc'),'/');
 assert.equal(config.claimValue({realm:{roles:['teacher']}},'realm.roles')[0],'teacher');
 assert.deepEqual(config.claimStrings('teachers, staff;faculty'),['teachers','staff','faculty']);
+assert.equal(config.classifyUpn(' FC123@ALUNOS.CIENCIAS.ULISBOA.PT ','alunos.ciencias.ulisboa.pt','ciencias.ulisboa.pt'),'student');
+assert.equal(config.classifyUpn('teacher@ciencias.ulisboa.pt','alunos.ciencias.ulisboa.pt','ciencias.ulisboa.pt'),'teacher');
+assert.equal(config.classifyUpn('teacher@sub.ciencias.ulisboa.pt','alunos.ciencias.ulisboa.pt','ciencias.ulisboa.pt'),null);
+assert.equal(config.classifyUpn('teacher@ciencias.ulisboa.pt.evil.example','alunos.ciencias.ulisboa.pt','ciencias.ulisboa.pt'),null);
+assert.equal(config.classifyUpn('teacher@@ciencias.ulisboa.pt','alunos.ciencias.ulisboa.pt','ciencias.ulisboa.pt'),null);
+assert.equal(config.classifyUpn(null,'alunos.ciencias.ulisboa.pt','ciencias.ulisboa.pt'),null);
 
-Object.assign(process.env,{NODE_ENV:'production',AUTH_PROVIDER:'oidc',PULSE_PUBLIC_ORIGIN:'https://pulse.example.test',OIDC_ISSUER_URL:'https://id.example.test',OIDC_CLIENT_ID:'pulse',OIDC_CLIENT_SECRET:'synthetic-secret',OIDC_CLIENT_AUTH_METHOD:'client_secret_basic',OIDC_SCOPES:'openid profile email',OIDC_REDIRECT_URI:'https://pulse.example.test/api/auth/callback/oidc',OIDC_POST_LOGOUT_REDIRECT_URI:'https://pulse.example.test/',OIDC_STUDENT_ID_CLAIM:'student.id',OIDC_TEACHER_GROUP_CLAIM:'groups',OIDC_TEACHER_GROUPS:'teachers,faculty',AUTH_SESSION_SECRET:'synthetic-session-secret-with-32-characters'});
-const settings=config.getOidcSettings();assert.equal(settings.publicOrigin,'https://pulse.example.test');assert.equal(settings.teacherGroups.has('faculty'),true);
+Object.assign(process.env,{NODE_ENV:'production',AUTH_PROVIDER:'oidc',PULSE_PUBLIC_ORIGIN:'https://pulse.example.test',OIDC_ISSUER_URL:'https://id.example.test',OIDC_CLIENT_ID:'pulse',OIDC_CLIENT_SECRET:'synthetic-secret',OIDC_CLIENT_AUTH_METHOD:'client_secret_basic',OIDC_SCOPES:'openid profile email userPrincipalName',OIDC_REDIRECT_URI:'https://pulse.example.test/api/auth/callback/oidc',OIDC_POST_LOGOUT_REDIRECT_URI:'https://pulse.example.test/',OIDC_STUDENT_ID_CLAIM:'student.id',OIDC_USER_PRINCIPAL_NAME_CLAIM:'userPrincipalName',OIDC_STUDENT_UPN_DOMAIN:'ALUNOS.CIENCIAS.ULISBOA.PT',OIDC_TEACHER_UPN_DOMAIN:'ciencias.ulisboa.pt',OIDC_TEACHER_GROUP_CLAIM:'groups',OIDC_TEACHER_GROUPS:'teachers,faculty',AUTH_SESSION_SECRET:'synthetic-session-secret-with-32-characters'});
+const settings=config.getOidcSettings();assert.equal(settings.publicOrigin,'https://pulse.example.test');assert.equal(settings.teacherGroups.has('faculty'),true);assert.equal(settings.studentUpnDomain,'alunos.ciencias.ulisboa.pt');
+assert.equal(config.teacherAccessFromClaims({userPrincipalName:'teacher@ciencias.ulisboa.pt',groups:[]},settings),true);
+assert.equal(config.teacherAccessFromClaims({userPrincipalName:'student@alunos.ciencias.ulisboa.pt',groups:['teachers']},settings),false);
+assert.throws(()=>config.teacherAccessFromClaims({userPrincipalName:'person@sub.ciencias.ulisboa.pt'},settings),/outside the configured/);
+assert.throws(()=>config.teacherAccessFromClaims({},settings),/missing, malformed/);
+assert.equal(config.teacherAccessFromClaims({groups:['faculty']},{...settings,userPrincipalNameClaim:null,studentUpnDomain:null,teacherUpnDomain:null}),true);
 process.env.OIDC_REDIRECT_URI='https://evil.example.test/api/auth/callback/oidc';assert.throws(()=>config.getOidcSettings(),/PULSE_PUBLIC_ORIGIN/);process.env.OIDC_REDIRECT_URI='https://pulse.example.test/api/auth/callback/oidc';
 process.env.OIDC_SCOPES='profile email';assert.throws(()=>config.getOidcSettings(),/include openid/);process.env.OIDC_SCOPES='openid profile email';
+delete process.env.OIDC_TEACHER_UPN_DOMAIN;assert.throws(()=>config.getOidcSettings(),/must be configured together/);process.env.OIDC_TEACHER_UPN_DOMAIN='ciencias.ulisboa.pt';
+process.env.OIDC_TEACHER_UPN_DOMAIN='@ciencias.ulisboa.pt';assert.throws(()=>config.getOidcSettings(),/exact DNS domain/);process.env.OIDC_TEACHER_UPN_DOMAIN='ciencias.ulisboa.pt';
+process.env.OIDC_TEACHER_UPN_DOMAIN='alunos.ciencias.ulisboa.pt';assert.throws(()=>config.getOidcSettings(),/must be different/);process.env.OIDC_TEACHER_UPN_DOMAIN='ciencias.ulisboa.pt';
 
 const sqlite=new DatabaseSync(':memory:');sqlite.exec(`PRAGMA foreign_keys=ON;
 CREATE TABLE students(id TEXT PRIMARY KEY,student_number TEXT,name TEXT);

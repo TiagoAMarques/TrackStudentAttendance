@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as oidc from 'openid-client';
 import { getDatabase } from '#database';
-import { claimStrings, claimValue, getOidcConfiguration, getOidcSettings, oidcEnabled } from '../../../../oidc-config';
+import { claimValue, getOidcConfiguration, getOidcSettings, oidcEnabled, teacherAccessFromClaims } from '../../../../oidc-config';
 import { digestOpaqueToken, OIDC_SESSION_COOKIE, OIDC_SESSION_SECONDS, oidcUserId, randomOpaqueToken } from '../../../../oidc-session';
 import { linkAuthoritativeStudentIdentity } from '../../../../oidc-identity';
 
@@ -31,8 +31,7 @@ export async function GET(request:Request){
     const idNumberValue=claimValue(claims,settings.studentIdClaim);
     if(typeof idNumberValue!=='string'&&typeof idNumberValue!=='number')throw Error(`The ${settings.studentIdClaim} claim is missing.`);
     const idNumber=String(idNumberValue).trim();if(!idNumber)throw Error(`The ${settings.studentIdClaim} claim is empty.`);
-    const groups=settings.teacherGroupClaim?claimStrings(claimValue(claims,settings.teacherGroupClaim)):[];
-    const teacherAccess=groups.some(group=>settings.teacherGroups.has(group));
+    const teacherAccess=teacherAccessFromClaims(claims,settings);
     const subject=idClaims.sub,userId=await oidcUserId(settings.issuer,subject);
     const email=typeof claims.email==='string'?claims.email.trim().toLowerCase():'';
     const displayName=[claims.name,claims.preferred_username,email,idNumber].find(value=>typeof value==='string'&&value.trim()) as string;

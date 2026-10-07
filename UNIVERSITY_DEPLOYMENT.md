@@ -30,16 +30,22 @@ OIDC_ISSUER_URL=<issuer supplied by the University>
 OIDC_CLIENT_ID=<client ID>
 OIDC_CLIENT_SECRET=<secret supplied through a secure channel>
 OIDC_CLIENT_AUTH_METHOD=client_secret_basic
-OIDC_SCOPES=openid profile email
+OIDC_SCOPES=openid profile email userPrincipalName
 OIDC_REDIRECT_URI=https://pulse.campus.ciencias.ulisboa.pt/api/auth/callback/oidc
 OIDC_POST_LOGOUT_REDIRECT_URI=https://pulse.campus.ciencias.ulisboa.pt/
 OIDC_STUDENT_ID_CLAIM=<authoritative institutional ID-number claim>
-OIDC_TEACHER_GROUP_CLAIM=<group or role claim; dotted paths supported>
-OIDC_TEACHER_GROUPS=<comma-separated groups granted teacher access>
+OIDC_USER_PRINCIPAL_NAME_CLAIM=userPrincipalName
+OIDC_STUDENT_UPN_DOMAIN=alunos.ciencias.ulisboa.pt
+OIDC_TEACHER_UPN_DOMAIN=ciencias.ulisboa.pt
+# Alternative after an authoritative role is available:
+# OIDC_TEACHER_GROUP_CLAIM=<group or role claim; dotted paths supported>
+# OIDC_TEACHER_GROUPS=<comma-separated groups granted teacher access>
 AUTH_SESSION_SECRET=<at least 32 random characters>
 ```
 
-The redirect and post-logout URLs must exactly match the identity-provider registration. If no teacher groups are configured, OIDC users are students unless their stable generated user ID already has an explicit course-teacher assignment. The configured student ID claim is matched only against imported roster ID numbers; names and email addresses are never used to establish student ownership. Restart with `pm2 restart ecosystem.config.cjs --update-env` after configuration changes.
+The redirect and post-logout URLs must exactly match the identity-provider registration. The three UPN-classification variables are optional but must be configured together. When enabled, Pulse compares the complete lower-cased domain after a single `@`: only the exact student and teacher domains are accepted, all other or malformed values fail closed, and the UPN result takes precedence over group-based teacher access. This is an explicitly temporary authorization mechanism: every account in the configured teacher domain receives teacher-level classification, so replace it with an authoritative institutional role when that service is available. To return to group-based authorization, remove all three UPN variables and configure the teacher group claim and allowed values instead.
+
+The configured student ID claim is matched only against imported roster ID numbers; names, UPNs and email addresses are never used to establish student ownership. If neither UPN classification nor teacher groups are configured, OIDC users are students unless their stable generated user ID already has an explicit course-teacher assignment. Restart with `pm2 restart ecosystem.config.cjs --update-env` after configuration changes.
 
 The database must be on persistent local storage, not an NFS/SMB share. The service account needs write access to its directory. Back up the database using a SQLite-aware online backup or a coordinated stopped-service snapshot that includes WAL state.
 
@@ -77,4 +83,4 @@ The process listens only on `127.0.0.1:3000`. The reverse proxy should be the on
 
 ## Remaining production acceptance
 
-Before real student data is used, validate discovery and token exchange against the university provider, the authoritative student-ID claim, teacher group mapping, test student/teacher accounts, logout, session expiry, proxy HTTPS headers, and rejected unauthorized access. Successful implementation does not replace the university's security and data-protection acceptance.
+Before real student data is used, validate discovery and token exchange against the university provider, the authoritative student-ID claim, UPN or teacher-group mapping, test student/teacher accounts, rejection of unknown UPN domains, logout, session expiry, proxy HTTPS headers, and rejected unauthorized access. Successful implementation does not replace the university's security and data-protection acceptance.

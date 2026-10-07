@@ -10,6 +10,9 @@ export type OidcSettings = {
   postLogoutRedirectUri: string;
   publicOrigin: string;
   studentIdClaim: string;
+  userPrincipalNameClaim: string | null;
+  studentUpnDomain: string | null;
+  teacherUpnDomain: string | null;
   teacherGroupClaim: string | null;
   teacherGroups: Set<string>;
 };
@@ -42,6 +45,16 @@ export function getOidcSettings(): OidcSettings {
   const teacherGroups = new Set((process.env.OIDC_TEACHER_GROUPS ?? '').split(',').map(value => value.trim()).filter(Boolean));
   const teacherGroupClaim = process.env.OIDC_TEACHER_GROUP_CLAIM?.trim() || null;
   if (teacherGroups.size && !teacherGroupClaim) throw new Error('OIDC_TEACHER_GROUP_CLAIM is required when OIDC_TEACHER_GROUPS is configured.');
+  const userPrincipalNameClaim = process.env.OIDC_USER_PRINCIPAL_NAME_CLAIM?.trim() || null;
+  const studentUpnDomainValue = process.env.OIDC_STUDENT_UPN_DOMAIN?.trim() || null;
+  const teacherUpnDomainValue = process.env.OIDC_TEACHER_UPN_DOMAIN?.trim() || null;
+  const domainClassificationValues = [userPrincipalNameClaim, studentUpnDomainValue, teacherUpnDomainValue];
+  if (domainClassificationValues.some(Boolean) && !domainClassificationValues.every(Boolean)) {
+    throw new Error('OIDC_USER_PRINCIPAL_NAME_CLAIM, OIDC_STUDENT_UPN_DOMAIN and OIDC_TEACHER_UPN_DOMAIN must be configured together.');
+  }
+  const studentUpnDomain = studentUpnDomainValue ? normalizedDomain(studentUpnDomainValue, 'OIDC_STUDENT_UPN_DOMAIN') : null;
+  const teacherUpnDomain = teacherUpnDomainValue ? normalizedDomain(teacherUpnDomainValue, 'OIDC_TEACHER_UPN_DOMAIN') : null;
+  if (studentUpnDomain && studentUpnDomain === teacherUpnDomain) throw new Error('Student and teacher UPN domains must be different.');
   const sessionSecret = required('AUTH_SESSION_SECRET');
   if (sessionSecret.length < 32) throw new Error('AUTH_SESSION_SECRET must contain at least 32 characters.');
   return {
@@ -54,6 +67,9 @@ export function getOidcSettings(): OidcSettings {
     postLogoutRedirectUri,
     publicOrigin,
     studentIdClaim: required('OIDC_STUDENT_ID_CLAIM'),
+    userPrincipalNameClaim,
+    studentUpnDomain,
+    teacherUpnDomain,
     teacherGroupClaim,
     teacherGroups,
   };
@@ -84,6 +100,25 @@ export function claimStrings(value: unknown): string[] {
   return value.split(/[;,]/).map(item => item.trim()).filter(Boolean);
 }
 
+export function classifyUpn(value: unknown, studentDomain: string, teacherDomain: string): 'student' | 'teacher' | null {
+  if (typeof value !== 'string') return null;
+  const match = /^([^\s@]+)@([^\s@]+)$/.exec(value.trim().toLowerCase());
+  if (!match) return null;
+  if (match[2] === studentDomain) return 'student';
+  if (match[2] === teacherDomain) return 'teacher';
+  return null;
+}
+
+export function teacherAccessFromClaims(claims: Record<string, unknown>, settings: Pick<OidcSettings, 'userPrincipalNameClaim' | 'studentUpnDomain' | 'teacherUpnDomain' | 'teacherGroupClaim' | 'teacherGroups'>): boolean {
+  if (settings.userPrincipalNameClaim && settings.studentUpnDomain && settings.teacherUpnDomain) {
+    const role = classifyUpn(claimValue(claims, settings.userPrincipalNameClaim), settings.studentUpnDomain, settings.teacherUpnDomain);
+    if (!role) throw new Error(`The ${settings.userPrincipalNameClaim} claim is missing, malformed or outside the configured student and teacher domains.`);
+    return role === 'teacher';
+  }
+  const groups = settings.teacherGroupClaim ? claimStrings(claimValue(claims, settings.teacherGroupClaim)) : [];
+  return groups.some(group => settings.teacherGroups.has(group));
+}
+
 export function safeReturnPath(value: string | null | undefined): string {
   const candidate = value?.trim() || '/';
   if (!candidate.startsWith('/') || candidate.startsWith('//')) return '/';
@@ -103,4 +138,12 @@ function normalizedOrigin(value: string, name: string) {
   const url = new URL(normalizedUrl(value, name));
   if (url.pathname !== '/' || url.search) throw new Error(`${name} must contain only the public origin.`);
   return url.origin;
+}
+
+function normalizedDomain(value: string, name: string) {
+  const domain = value.toLowerCase();
+  if (domain.startsWith('@') || domain.includes('://') || domain.length > 253 || !/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z0-9-]{2,63}$/.test(domain)) {
+    throw new Error(`${name} must be an exact DNS domain without @, a scheme, a path or wildcards.`);
+  }
+  return domain;
 }
