@@ -5,12 +5,22 @@ import { DatabaseSync, type StatementResultingChanges } from 'node:sqlite';
 type BoundValue = string | number | bigint | null | Uint8Array;
 type RunResult = { success: true; meta: { changes: number; last_row_id: number | bigint } };
 
+function toPlainRow<T>(row: Record<string, unknown>): T {
+  // node:sqlite returns null-prototype rows, which cannot cross a Next.js
+  // Server Component boundary. Copy each row into a normal plain object.
+  return { ...row } as T;
+}
+
 class NodePreparedStatement {
   constructor(private readonly connection: DatabaseSync, readonly sql: string, readonly values: BoundValue[] = []) {}
   bind(...values: unknown[]) { return new NodePreparedStatement(this.connection, this.sql, values as BoundValue[]); }
-  async first<T>(): Promise<T | null> { return (this.connection.prepare(this.sql).get(...this.values) as T | undefined) ?? null; }
+  async first<T>(): Promise<T | null> {
+    const row = this.connection.prepare(this.sql).get(...this.values) as Record<string, unknown> | undefined;
+    return row === undefined ? null : toPlainRow<T>(row);
+  }
   async all<T>(): Promise<{ success: true; results: T[]; meta: Record<string, never> }> {
-    return { success: true, results: this.connection.prepare(this.sql).all(...this.values) as T[], meta: {} };
+    const rows = this.connection.prepare(this.sql).all(...this.values) as Record<string, unknown>[];
+    return { success: true, results: rows.map(row => toPlainRow<T>(row)), meta: {} };
   }
   async run(): Promise<RunResult> { return toRunResult(this.connection.prepare(this.sql).run(...this.values)); }
   runSync(): RunResult { return toRunResult(this.connection.prepare(this.sql).run(...this.values)); }
